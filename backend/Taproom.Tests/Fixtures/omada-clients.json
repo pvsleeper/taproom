@@ -1,0 +1,34 @@
+[
+  {
+    "mac": "aa:bb:cc:dd:ee:01",
+    "customName": "Pieter-iPhone",
+    "hostname": "pieters-iphone",
+    "ip": "10.0.1.52",
+    "wireless": true,
+    "active": true,
+    "ssid": "venter",
+    "apName": "EAP670 Downstairs",
+    "band": "5 GHz",
+    "rssi": -52,
+    "rxBytes": 1830000000,
+    "txBytes": 240000000,
+    "connectedSince": "2026-09-26T07:02:11+10:00",
+    "lastSeen": "2026-09-26T10:15:30+10:00"
+  },
+  {
+    "mac": "AABBCCDDEE02",
+    "customName": null,
+    "hostname": "living-room-tv",
+    "ip": "10.0.1.60",
+    "wireless": true,
+    "active": true,
+    "ssid": "venter",
+    "apName": "EAP670 Lounge",
+    "band": "2.4 GHz",
+    "rssi": -68,
+    "rxBytes": 500000,
+    "txBytes": 20000,
+    "connectedSince": "2026-09-26T09:00:00+10:00",
+    "lastSeen": "2026-09-26T10:15:30+10:00"
+  }
+]

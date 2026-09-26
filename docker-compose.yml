@@ -1,0 +1,27 @@
+services:
+  taproom:
+    build: .
+    image: taproom:latest
+    container_name: taproom
+    restart: unless-stopped
+    volumes:
+      - ./appsettings.Local.json:/app/appsettings.Local.json:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.taproom.rule=Host(`taproom.venter.center`)"
+      - "traefik.http.routers.taproom.entrypoints=websecure"
+      - "traefik.http.routers.taproom.tls=true"
+      - "traefik.http.routers.taproom.middlewares=local-only@file"
+      - "traefik.http.services.taproom.loadbalancer.server.port=8080"
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    external: true

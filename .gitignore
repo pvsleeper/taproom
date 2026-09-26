@@ -1,0 +1,16 @@
+.DS_Store
+
+# .NET
+backend/**/bin/
+backend/**/obj/
+backend/Taproom.Api/appsettings.Local.json
+backend/Taproom.Api/wwwroot/
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+
+# IDE
+.vs/
+.vscode/
+*.user

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Taproom.Api/Taproom.Api.csproj" />
+  <Project Path="Taproom.Tests/Taproom.Tests.csproj" />
+</Solution>
