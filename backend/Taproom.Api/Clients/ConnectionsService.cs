@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Taproom.Api.Config;
@@ -24,6 +25,12 @@ public sealed class ConnectionsService
     private readonly IMemoryCache _cache;
     private readonly HomeOptions _home;
     private readonly ILogger<ConnectionsService> _logger;
+
+    // Reused when a fetch fails (e.g. OPNsense's web backend occasionally corrupts a large chunked
+    // response), so one transient blip doesn't empty the whole connections view — same pattern as
+    // phase 1's poller reusing last-good source data.
+    private readonly ConcurrentDictionary<string, IReadOnlyList<FirewallState>> _lastStatesByIp = new();
+    private readonly ConcurrentDictionary<string, IReadOnlyList<DnsQueryEntry>> _lastQueriesByIp = new();
 
     public ConnectionsService(
         IStatesClient states,
@@ -91,11 +98,12 @@ public sealed class ConnectionsService
     {
         var statesOk = true;
         string? statesError = null;
-        IReadOnlyList<FirewallState> states = [];
+        IReadOnlyList<FirewallState> states = _lastStatesByIp.GetValueOrDefault(ip, []);
         try
         {
             using var cts = new CancellationTokenSource(SourceTimeout);
             states = await _states.GetStatesForClientAsync(ip, cts.Token);
+            _lastStatesByIp[ip] = states;
         }
         catch (Exception ex)
         {
@@ -106,11 +114,12 @@ public sealed class ConnectionsService
 
         var dnsOk = true;
         string? dnsError = null;
-        IReadOnlyList<DnsQueryEntry> recentQueries = [];
+        IReadOnlyList<DnsQueryEntry> recentQueries = _lastQueriesByIp.GetValueOrDefault(ip, []);
         try
         {
             using var cts = new CancellationTokenSource(SourceTimeout);
             recentQueries = await _unboundLog.GetQueriesForClientAsync(ip, DomainLookbackWindow, cts.Token);
+            _lastQueriesByIp[ip] = recentQueries;
         }
         catch (Exception ex)
         {
@@ -127,9 +136,8 @@ public sealed class ConnectionsService
             .Select(g => g.Domain)
             .ToList();
 
-        var dnsNamesByIp = dnsOk
-            ? await _domainResolver.ResolveDomainsAsync(recentDomains, cancellationToken)
-            : new Dictionary<string, List<string>>();
+        // Resolve from whatever domains we have, even stale ones from a failed fetch — better than nothing.
+        var dnsNamesByIp = await _domainResolver.ResolveDomainsAsync(recentDomains, cancellationToken);
 
         var publicRemoteIps = states
             .Select(s => s.RemoteIp)

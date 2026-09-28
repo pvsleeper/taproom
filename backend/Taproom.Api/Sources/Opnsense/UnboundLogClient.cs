@@ -24,11 +24,14 @@ public sealed class UnboundLogClient : IUnboundLogClient
         // Rows come back newest-first, so we can stop paging as soon as a page's rows fall before the cutoff.
         for (var page = 1; page <= MaxPages; page++)
         {
-            var body = new { current = page, rowCount = PageSize, searchPhrase = clientIp };
-            var response = await _http.PostAsJsonAsync("/api/unbound/overview/search_queries", body, cancellationToken);
-            response.EnsureSuccessStatusCode();
-
-            var result = await response.Content.ReadFromJsonAsync<OpnsenseSearchResult<OpnsenseUnboundQueryDto>>(cancellationToken);
+            var pageNumber = page;
+            var result = await TransientHttpRetry.RunAsync(async () =>
+            {
+                var body = new { current = pageNumber, rowCount = PageSize, searchPhrase = clientIp };
+                var response = await _http.PostAsJsonAsync("/api/unbound/overview/search_queries", body, cancellationToken);
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadFromJsonAsync<OpnsenseSearchResult<OpnsenseUnboundQueryDto>>(cancellationToken);
+            }, cancellationToken);
             var rows = result?.Rows ?? [];
             if (rows.Count == 0) break;
 

@@ -12,7 +12,10 @@ public sealed class StatesClient : IStatesClient
         _http = http;
     }
 
-    public async Task<IReadOnlyList<FirewallState>> GetStatesForClientAsync(string clientIp, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<FirewallState>> GetStatesForClientAsync(string clientIp, CancellationToken cancellationToken) =>
+        TransientHttpRetry.RunAsync(() => FetchAsync(clientIp, cancellationToken), cancellationToken);
+
+    private async Task<IReadOnlyList<FirewallState>> FetchAsync(string clientIp, CancellationToken cancellationToken)
     {
         var body = new { current = 1, rowCount = 500, searchPhrase = clientIp };
         var response = await _http.PostAsJsonAsync("/api/diagnostics/firewall/query_states", body, cancellationToken);
