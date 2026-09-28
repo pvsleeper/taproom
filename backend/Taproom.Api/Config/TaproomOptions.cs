@@ -7,6 +7,21 @@ public sealed class TaproomOptions
     public int CacheSeconds { get; set; } = 30;
     public OmadaOptions Omada { get; set; } = new();
     public OpnsenseOptions Opnsense { get; set; } = new();
+    public HomeOptions Home { get; set; } = new();
+    public GeoIpOptions GeoIp { get; set; } = new();
+}
+
+public sealed class HomeOptions
+{
+    public double Latitude { get; set; }
+    public double Longitude { get; set; }
+    public string Label { get; set; } = "Home";
+}
+
+public sealed class GeoIpOptions
+{
+    public string CityDbPath { get; set; } = "";
+    public string AsnDbPath { get; set; } = "";
 }
 
 public sealed class OmadaOptions
@@ -32,4 +47,6 @@ public sealed class OpnsenseOptions
     public string ApiSecret { get; set; } = "";
     public bool AllowInvalidCertificate { get; set; }
     public DhcpProvider DhcpProvider { get; set; } = DhcpProvider.Dnsmasq;
+    /// <summary>Resolver used to re-resolve domains for connection enrichment — normally the router itself.</summary>
+    public string DnsServer { get; set; } = "";
 }

@@ -87,3 +87,72 @@ public sealed class IscLeaseDto
     [JsonPropertyName("is_reserved")]
     public string? IsReserved { get; set; }
 }
+
+/// <summary>
+/// One row from POST /api/diagnostics/firewall/query_states. Each real connection appears twice — once
+/// on the "LAN to any" rule with the client's real LAN IP as src_addr (pre-NAT), and once on an internal
+/// NAT/outbound rule with the router's WAN IP as src_addr (post-NAT). Filtering src_addr == the client's
+/// exact IP keeps only the pre-NAT row and naturally drops the duplicate.
+/// </summary>
+public sealed class OpnsenseStateDto
+{
+    [JsonPropertyName("proto")]
+    public string? Proto { get; set; }
+
+    [JsonPropertyName("src_addr")]
+    public string? SrcAddr { get; set; }
+
+    [JsonPropertyName("src_port")]
+    public string? SrcPort { get; set; }
+
+    [JsonPropertyName("dst_addr")]
+    public string? DstAddr { get; set; }
+
+    [JsonPropertyName("dst_port")]
+    public string? DstPort { get; set; }
+
+    /// <summary>e.g. "ESTABLISHED:ESTABLISHED" (client-to-server : server-to-client).</summary>
+    [JsonPropertyName("state")]
+    public string? State { get; set; }
+
+    /// <summary>Formatted duration, e.g. "06:47:00".</summary>
+    [JsonPropertyName("age")]
+    public string? Age { get; set; }
+
+    /// <summary>[in, out].</summary>
+    [JsonPropertyName("pkts")]
+    public long[]? Packets { get; set; }
+
+    /// <summary>[in, out].</summary>
+    [JsonPropertyName("bytes")]
+    public long[]? Bytes { get; set; }
+}
+
+/// <summary>One row from POST /api/unbound/overview/search_queries.</summary>
+public sealed class OpnsenseUnboundQueryDto
+{
+    /// <summary>Unix seconds.</summary>
+    [JsonPropertyName("time")]
+    public long Time { get; set; }
+
+    [JsonPropertyName("client")]
+    public string? Client { get; set; }
+
+    /// <summary>DNS record type queried, e.g. "A", "AAAA", "HTTPS".</summary>
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+
+    /// <summary>Trailing-dot FQDN, e.g. "youtube.com.".</summary>
+    [JsonPropertyName("domain")]
+    public string? Domain { get; set; }
+
+    /// <summary>"Pass" when allowed; anything else (e.g. "Block") is treated as blocked.</summary>
+    [JsonPropertyName("action")]
+    public string? Action { get; set; }
+
+    [JsonPropertyName("blocklist")]
+    public string? Blocklist { get; set; }
+
+    [JsonPropertyName("rcode")]
+    public string? Rcode { get; set; }
+}

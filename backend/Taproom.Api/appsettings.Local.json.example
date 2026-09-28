@@ -13,7 +13,17 @@
       "ApiKey": "...",
       "ApiSecret": "...",
       "AllowInvalidCertificate": true,
-      "DhcpProvider": "Dnsmasq"
+      "DhcpProvider": "Dnsmasq",
+      "DnsServer": "10.0.1.1"
+    },
+    "Home": {
+      "Latitude": -27.47,
+      "Longitude": 153.03,
+      "Label": "Home"
+    },
+    "GeoIp": {
+      "CityDbPath": "/data/geoip/GeoLite2-City.mmdb",
+      "AsnDbPath": "/data/geoip/GeoLite2-ASN.mmdb"
     }
   }
 }
