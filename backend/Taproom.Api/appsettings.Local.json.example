@@ -1,6 +1,6 @@
 {
   "Taproom": {
-    "PollIntervalSeconds": 30,
+    "CacheSeconds": 30,
     "Omada": {
       "BaseUrl": "https://10.0.1.10:8043",
       "ClientId": "...",

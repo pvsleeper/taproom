@@ -4,7 +4,7 @@ public sealed class TaproomOptions
 {
     public const string SectionName = "Taproom";
 
-    public int PollIntervalSeconds { get; set; } = 30;
+    public int CacheSeconds { get; set; } = 30;
     public OmadaOptions Omada { get; set; } = new();
     public OpnsenseOptions Opnsense { get; set; } = new();
 }
