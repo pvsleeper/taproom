@@ -27,7 +27,9 @@ public sealed class OpnsenseClient : IOpnsenseClient
         {
             var mac = MacAddress.Normalize(row.Mac);
             if (mac is null) continue;
-            if (row.Expired == "1") continue;
+            if (row.Expired) continue;
+            // The ARP table also carries the WAN-side gateway/neighbors, which aren't LAN clients.
+            if (string.Equals(row.IntfDescription, "WAN", StringComparison.OrdinalIgnoreCase)) continue;
 
             result.Add(new ArpEntry
             {
@@ -63,13 +65,15 @@ public sealed class OpnsenseClient : IOpnsenseClient
         {
             var mac = MacAddress.Normalize(row.Hwaddr);
             if (mac is null) continue;
+            // dnsmasq lists both the IPv4 and IPv6 leases for a dual-stack client; phase 1 only shows IPv4.
+            if (row.Address is null || row.Address.Contains(':')) continue;
 
             leases.Add(new DhcpLease
             {
                 Mac = mac,
                 Ip = row.Address,
                 Hostname = NullIfUnknown(row.Hostname),
-                IsStatic = string.Equals(row.Type, "static", StringComparison.OrdinalIgnoreCase),
+                IsStatic = row.IsReserved.Count > 0,
                 ObservedAt = now,
             });
         }
@@ -128,5 +132,5 @@ public sealed class OpnsenseClient : IOpnsenseClient
     }
 
     private static string? NullIfUnknown(string? hostname) =>
-        string.IsNullOrWhiteSpace(hostname) || hostname == "?" ? null : hostname;
+        string.IsNullOrWhiteSpace(hostname) || hostname is "?" or "*" ? null : hostname;
 }

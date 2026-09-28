@@ -2,9 +2,10 @@ using System.Text.Json.Serialization;
 
 namespace Taproom.Api.Sources.Omada;
 
-// Omada Open API wraps every response the same way. Field names below follow the documented
-// Open API v5 shape; Claude Code could not reach a live controller to confirm them against its
-// Swagger docs, so verify each against the real controller before relying on this in production.
+// Omada Open API wraps every response the same way. The client_credentials token flow was confirmed
+// against a live controller (6.3.0.45, apiVer 3) — note the params must be duplicated as both query
+// string and JSON body (see OmadaClient.GetAccessTokenAsync); the client/device list fields below are
+// still best-effort guesses from the spec doc and haven't been confirmed against real client/device data.
 
 public sealed class OmadaEnvelope<T>
 {
@@ -24,6 +25,7 @@ public sealed class OmadaInfoResult
     public string OmadacId { get; set; } = "";
 }
 
+/// <summary>Body for POST /openapi/authorize/token?grant_type=client_credentials (also duplicated as query params).</summary>
 public sealed class OmadaTokenRequest
 {
     [JsonPropertyName("omadacId")]

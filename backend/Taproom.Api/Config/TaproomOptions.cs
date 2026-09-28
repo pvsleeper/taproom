@@ -15,6 +15,7 @@ public sealed class OmadaOptions
     public string ClientId { get; set; } = "";
     public string ClientSecret { get; set; } = "";
     public string SiteName { get; set; } = "Default";
+    public bool AllowInvalidCertificate { get; set; }
 }
 
 public enum DhcpProvider

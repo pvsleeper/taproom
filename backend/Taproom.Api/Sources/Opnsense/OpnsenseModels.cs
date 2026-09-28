@@ -2,9 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Taproom.Api.Sources.Opnsense;
 
-// OPNsense's diagnostic and search endpoints mostly return primitive fields as strings.
-// Claude Code could not confirm these against a live router, so verify field names against
-// the actual API responses before relying on this in production (see docs/Taproom — Phase 1 Spec.md).
+// Confirmed against a live router (OPNsense, dnsmasq DHCP backend) — see docs/Taproom — Phase 1 Spec.md.
 
 /// <summary>One row from GET /api/diagnostics/interface/get_arp.</summary>
 public sealed class OpnsenseArpEntryDto
@@ -18,11 +16,11 @@ public sealed class OpnsenseArpEntryDto
     [JsonPropertyName("hostname")]
     public string? Hostname { get; set; }
 
-    [JsonPropertyName("intf")]
-    public string? Intf { get; set; }
+    [JsonPropertyName("intf_description")]
+    public string? IntfDescription { get; set; }
 
     [JsonPropertyName("expired")]
-    public string? Expired { get; set; }
+    public bool Expired { get; set; }
 }
 
 /// <summary>Common "rows" envelope used by OPNsense's search-grid endpoints.</summary>
@@ -50,8 +48,9 @@ public sealed class DnsmasqLeaseDto
     [JsonPropertyName("hostname")]
     public string? Hostname { get; set; }
 
-    [JsonPropertyName("type")]
-    public string? Type { get; set; }
+    /// <summary>Non-empty when the lease is pinned to a static mapping, e.g. ["hwaddr"].</summary>
+    [JsonPropertyName("is_reserved")]
+    public List<string> IsReserved { get; set; } = new();
 }
 
 /// <summary>One row from GET /api/kea/leases4/search.</summary>

@@ -64,6 +64,8 @@ public class ClientMergerTests
     {
         var client = Merge("AA:BB:CC:DD:EE:03");
         Assert.Equal("office-desktop-dhcp", client.Name);
+        // No Omada record, but it IS currently online via ARP — Omada would have caught it if wireless,
+        // so a live, non-Omada-tracked client is confidently Wired, not Unknown.
         Assert.Equal(ConnectionType.Wired, client.Connection);
     }
 
@@ -101,6 +103,14 @@ public class ClientMergerTests
         Assert.Equal("unplugged-nas", client.Name);
         Assert.True(client.IsStaticLease);
         Assert.Equal(["dhcp"], client.Sources);
+    }
+
+    [Fact]
+    public void Offline_dhcp_only_client_has_unknown_connection_type()
+    {
+        // Omada has no history for it and it's not live in ARP, so we genuinely don't know if it's wired or wireless.
+        var client = Merge("AA:BB:CC:DD:EE:04");
+        Assert.Equal(ConnectionType.Unknown, client.Connection);
     }
 
     [Fact]

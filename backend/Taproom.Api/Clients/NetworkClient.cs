@@ -4,6 +4,9 @@ public enum ConnectionType
 {
     Wireless,
     Wired,
+    /// <summary>Omada has no record of this client at all (it only reports currently-connected clients,
+    /// not offline history), so whether it's wired or wireless is genuinely unknown.</summary>
+    Unknown,
 }
 
 public sealed record NetworkClient

@@ -63,8 +63,13 @@ public static class ClientMerger
         var hostname = FirstNonEmpty(dhcp?.Hostname, omada?.Hostname, arp?.Hostname);
         var ip = FirstNonEmpty(arp?.Ip, dhcp?.Ip, omada?.Ip);
 
-        var connection = omada?.Wireless == true ? ConnectionType.Wireless : ConnectionType.Wired;
         var online = omada?.Active == true || arp is not null;
+        // Omada only reports currently-connected clients, not offline history. So if it's silent on a
+        // client that's currently online (via ARP), that itself proves the client isn't a live wireless
+        // connection — Omada would have caught it. Only an offline, DHCP-only client is genuinely unknown.
+        var connection = omada is not null
+            ? (omada.Wireless ? ConnectionType.Wireless : ConnectionType.Wired)
+            : (online ? ConnectionType.Wired : ConnectionType.Unknown);
 
         var sources = new List<string>(3);
         if (omada is not null) sources.Add("omada");

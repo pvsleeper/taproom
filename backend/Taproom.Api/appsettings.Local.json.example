@@ -2,10 +2,11 @@
   "Taproom": {
     "PollIntervalSeconds": 30,
     "Omada": {
-      "BaseUrl": "https://omada.venter.center",
+      "BaseUrl": "https://10.0.1.10:8043",
       "ClientId": "...",
       "ClientSecret": "...",
-      "SiteName": "Default"
+      "SiteName": "Default",
+      "AllowInvalidCertificate": true
     },
     "Opnsense": {
       "BaseUrl": "https://10.0.1.1",

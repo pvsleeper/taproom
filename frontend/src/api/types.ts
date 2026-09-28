@@ -1,4 +1,4 @@
-export type ConnectionType = 'Wireless' | 'Wired'
+export type ConnectionType = 'Wireless' | 'Wired' | 'Unknown'
 
 export interface NetworkClient {
   mac: string

@@ -142,6 +142,13 @@ public sealed class OmadaClient : IOmadaClient
         return envelope.Result;
     }
 
+    /// <summary>
+    /// Omada's own docs only show grant_type/client_id/client_secret/omadacId in the JSON body, but
+    /// the controller actually requires them duplicated as URL query parameters too — a documented
+    /// bug in the official docs (confirmed against a live controller, error -44106 "Client Id Or
+    /// Client Secret Is Invalid" otherwise, regardless of how valid the credentials actually are).
+    /// See https://community.tp-link.com/en/home/forum/topic/655788.
+    /// </summary>
     private async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken, bool forceRefresh = false)
     {
         if (!forceRefresh && _accessToken is not null && DateTimeOffset.UtcNow < _tokenExpiresAt)
@@ -159,6 +166,11 @@ public sealed class OmadaClient : IOmadaClient
 
             await EnsureOmadacIdAsync(cancellationToken);
 
+            var clientId = Uri.EscapeDataString(_options.ClientId);
+            var clientSecret = Uri.EscapeDataString(_options.ClientSecret);
+            var omadacId = Uri.EscapeDataString(_omadacId!);
+            var path = $"/openapi/authorize/token?grant_type=client_credentials&client_id={clientId}&client_secret={clientSecret}&omadacId={omadacId}";
+
             var body = new OmadaTokenRequest
             {
                 OmadacId = _omadacId!,
@@ -166,8 +178,7 @@ public sealed class OmadaClient : IOmadaClient
                 ClientSecret = _options.ClientSecret,
             };
 
-            var response = await _http.PostAsJsonAsync(
-                "/openapi/authorize/token?grant_type=client_credentials", body, cancellationToken);
+            var response = await _http.PostAsJsonAsync(path, body, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var envelope = await response.Content.ReadFromJsonAsync<OmadaEnvelope<OmadaTokenResult>>(cancellationToken);

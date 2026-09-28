@@ -7,7 +7,7 @@ import {
   type SortingFn,
   type SortingState,
 } from '@tanstack/react-table'
-import { ArrowDown, ArrowUp, ArrowUpDown, Wifi, Cable } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Wifi, Cable, CircleHelp } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { NetworkClient } from '../../api/types'
 import { formatBytes, formatUptime } from '../../lib/format'
@@ -84,18 +84,29 @@ export function ClientTable({ clients, query }: ClientTableProps) {
         header: 'Connection',
         cell: (info) => {
           const client = info.row.original
-          return client.connection === 'Wireless' ? (
-            <div className="flex items-center gap-1.5 text-xs">
-              <Wifi size={14} className="text-text-muted" />
-              <span>
-                {client.ssid ?? '—'}
-                {client.band && <span className="text-text-muted"> · {client.band}</span>}
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 text-xs text-text-muted">
-              <Cable size={14} />
-              <span>Ethernet</span>
+          if (client.connection === 'Wireless') {
+            return (
+              <div className="flex items-center gap-1.5 text-xs">
+                <Wifi size={14} className="text-text-muted" />
+                <span>
+                  {client.ssid ?? '—'}
+                  {client.band && <span className="text-text-muted"> · {client.band}</span>}
+                </span>
+              </div>
+            )
+          }
+          if (client.connection === 'Wired') {
+            return (
+              <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                <Cable size={14} />
+                <span>Ethernet</span>
+              </div>
+            )
+          }
+          return (
+            <div className="flex items-center gap-1.5 text-xs text-text-muted" title="Offline and never seen by Omada — could be wired or wireless">
+              <CircleHelp size={14} />
+              <span>Unknown</span>
             </div>
           )
         },

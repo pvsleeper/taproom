@@ -13,4 +13,5 @@ frontend/dist/
 # IDE
 .vs/
 .vscode/
+.idea/
 *.user
