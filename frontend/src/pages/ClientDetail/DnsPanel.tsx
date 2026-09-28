@@ -1,4 +1,4 @@
-import { Pause, Play } from 'lucide-react'
+import { AlertTriangle, Pause, Play } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { DnsResult } from '../../api/types'
 
@@ -14,9 +14,10 @@ interface DnsPanelProps {
   data: DnsResult | undefined
   isPending: boolean
   onDomainClick: (domain: string) => void
+  sourceOk: boolean
 }
 
-export function DnsPanel({ minutes, onMinutesChange, data, isPending, onDomainClick }: DnsPanelProps) {
+export function DnsPanel({ minutes, onMinutesChange, data, isPending, onDomainClick, sourceOk }: DnsPanelProps) {
   const [paused, setPaused] = useState(false)
   const [frozenRecent, setFrozenRecent] = useState<DnsResult['recent']>([])
 
@@ -51,6 +52,13 @@ export function DnsPanel({ minutes, onMinutesChange, data, isPending, onDomainCl
           ))}
         </div>
       </div>
+
+      {!sourceOk && (
+        <div className="flex items-center gap-1.5 rounded-md border border-warn/30 bg-warn/10 px-2 py-1.5 text-xs text-warn">
+          <AlertTriangle size={12} />
+          Unbound DNS log unavailable
+        </div>
+      )}
 
       {isPending || !data ? (
         <div className="h-4 w-full animate-pulse rounded bg-surface-hover" />

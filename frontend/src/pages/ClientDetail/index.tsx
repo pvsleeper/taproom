@@ -70,6 +70,7 @@ export function ClientDetailPage() {
           locationFilterKey={locationFilterKey}
           onMarkerClick={setLocationFilterKey}
           isLoading={connectionsPending}
+          geoIpOk={connections?.sources.geoip.ok ?? true}
         />
 
         <div className="flex flex-col gap-4 lg:flex-row">
@@ -91,6 +92,7 @@ export function ClientDetailPage() {
               data={dns}
               isPending={dnsPending}
               onDomainClick={setHighlightedDomain}
+              sourceOk={connections?.sources.dns.ok ?? true}
             />
           </div>
         </div>

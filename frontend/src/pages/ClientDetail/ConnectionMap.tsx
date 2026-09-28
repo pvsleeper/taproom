@@ -29,6 +29,7 @@ interface ConnectionMapProps {
   locationFilterKey: string | null
   onMarkerClick: (key: string | null) => void
   isLoading: boolean
+  geoIpOk: boolean
 }
 
 export function ConnectionMap({
@@ -40,6 +41,7 @@ export function ConnectionMap({
   locationFilterKey,
   onMarkerClick,
   isLoading,
+  geoIpOk,
 }: ConnectionMapProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const zoomGroupRef = useRef<SVGGElement>(null)
@@ -285,6 +287,12 @@ export function ConnectionMap({
       {isLoading && connections.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center text-sm text-text-muted">
           Loading connections…
+        </div>
+      )}
+
+      {!geoIpOk && (
+        <div className="absolute bottom-2 left-2 rounded-full border border-warn/30 bg-warn/10 px-2.5 py-1 text-xs text-warn backdrop-blur">
+          GeoIP unavailable — locations and the map are empty
         </div>
       )}
     </div>
