@@ -9,6 +9,7 @@ import {
 } from '@tanstack/react-table'
 import { ArrowDown, ArrowUp, ArrowUpDown, Wifi, Cable, CircleHelp } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { NetworkClient } from '../../api/types'
 import { formatBytes, formatUptime } from '../../lib/format'
 import { HighlightText } from './HighlightText'
@@ -32,6 +33,7 @@ interface ClientTableProps {
 }
 
 export function ClientTable({ clients, query }: ClientTableProps) {
+  const navigate = useNavigate()
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'online', desc: true },
     { id: 'name', desc: false },
@@ -178,7 +180,15 @@ export function ClientTable({ clients, query }: ClientTableProps) {
         </thead>
         <tbody>
           {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className="h-10 border-b border-border last:border-b-0 hover:bg-surface-hover">
+            <tr
+              key={row.id}
+              tabIndex={0}
+              onClick={() => navigate(`/clients/${encodeURIComponent(row.original.mac)}`)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') navigate(`/clients/${encodeURIComponent(row.original.mac)}`)
+              }}
+              className="h-10 cursor-pointer border-b border-border last:border-b-0 hover:bg-surface-hover focus:bg-surface-hover focus:outline-none"
+            >
               {row.getVisibleCells().map((cell) => (
                 <td key={cell.id} className="px-3 py-1.5">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
