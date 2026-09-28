@@ -6,6 +6,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./appsettings.Local.json:/app/appsettings.Local.json:ro
+      - /data/geoip:/data/geoip:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
       interval: 30s
