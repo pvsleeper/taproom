@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchClient, fetchConnections, fetchDns } from './client'
+import { fetchBandwidth, fetchClient, fetchConnections, fetchDns } from './client'
 
 export function useClient(mac: string) {
   return useQuery({
@@ -26,6 +26,16 @@ export function useDns(mac: string, minutes: number, tail: number) {
     queryKey: ['dns', mac, minutes, tail],
     queryFn: () => fetchDns(mac, minutes, tail),
     refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
+    retry: 1,
+  })
+}
+
+export function useBandwidth(mac: string) {
+  return useQuery({
+    queryKey: ['bandwidth', mac],
+    queryFn: () => fetchBandwidth(mac),
+    refetchInterval: 2_000,
     refetchIntervalInBackground: false,
     retry: 1,
   })

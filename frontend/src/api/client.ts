@@ -1,4 +1,4 @@
-import type { ClientSnapshot, ConnectionsResult, DnsResult, NetworkClient } from './types'
+import type { BandwidthResult, ClientSnapshot, ConnectionsResult, DnsResult, NetworkClient } from './types'
 
 export class ClientsNotReadyError extends Error {
   constructor() {
@@ -54,4 +54,15 @@ export async function fetchDns(mac: string, minutes: number, tail: number): Prom
     throw new Error(`Failed to load DNS activity: ${response.status}`)
   }
   return (await response.json()) as DnsResult
+}
+
+export async function fetchBandwidth(mac: string): Promise<BandwidthResult> {
+  const response = await fetch(`/api/clients/${encodeURIComponent(mac)}/bandwidth`)
+  if (response.status === 404) {
+    throw new ClientNotFoundError(mac)
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to load bandwidth: ${response.status}`)
+  }
+  return (await response.json()) as BandwidthResult
 }

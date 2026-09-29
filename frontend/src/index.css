@@ -38,3 +38,15 @@ mark {
   border-radius: 2px;
   padding: 0 1px;
 }
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.animate-dash-flow {
+  animation-name: dash-flow;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}

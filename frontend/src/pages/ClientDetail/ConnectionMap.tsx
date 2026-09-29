@@ -76,9 +76,25 @@ export function ConnectionMap({
   }, [])
 
   const maxBytes = useMemo(() => Math.max(1, ...markers.map((m) => m.bytes)), [markers])
+  const maxRate = useMemo(() => Math.max(1, ...markers.map((m) => m.downBps + m.upBps)), [markers])
 
   function markerRadius(bytes: number): number {
     return 4 + 14 * Math.sqrt(bytes / maxBytes)
+  }
+
+  function arcWidth(rateBps: number): number {
+    return 0.75 + 3 * Math.sqrt(rateBps / maxRate)
+  }
+
+  /** Faster-moving dashes for an active transfer, near-still for an idle/keepalive connection. */
+  function dashDuration(rateBps: number): number {
+    const intensity = Math.sqrt(rateBps / maxRate)
+    return 3 - 2.4 * intensity
+  }
+
+  function formatMbps(bps: number): string {
+    const mbps = bps / 1_000_000
+    return mbps < 0.1 ? '<0.1 Mbps' : `${mbps < 10 ? mbps.toFixed(1) : Math.round(mbps)} Mbps`
   }
 
   function connectionsForMarker(marker: ConnectionMarker): EnrichedConnection[] {
@@ -192,14 +208,19 @@ export function ConnectionMap({
                 (highlightedDomain && memberConns.some((c) => c.name === highlightedDomain || c.otherNames.includes(highlightedDomain)))
               const dimmed = locationFilterKey !== null && locationFilterKey !== m.key
 
+              const rate = m.downBps + m.upBps
+
               return (
                 <path
                   key={m.key}
                   d={arcPath ?? undefined}
                   fill="none"
                   stroke={isDns ? 'var(--color-accent)' : 'var(--color-warn)'}
-                  strokeWidth={isHighlighted ? 2.5 : Math.max(0.75, Math.sqrt(m.bytes / maxBytes) * 2)}
+                  strokeWidth={isHighlighted ? 2.5 : arcWidth(rate)}
                   strokeOpacity={dimmed ? 0.15 : isHighlighted ? 1 : 0.55}
+                  strokeDasharray="5 5"
+                  className="animate-dash-flow"
+                  style={{ animationDuration: `${dashDuration(rate)}s` }}
                 />
               )
             })}
@@ -234,6 +255,7 @@ export function ConnectionMap({
                       m.label,
                       `${m.connectionCount} connection${m.connectionCount === 1 ? '' : 's'}`,
                       formatBytes(m.bytes),
+                      `↓ ${formatMbps(m.downBps)} ↑ ${formatMbps(m.upBps)}`,
                     ],
                   })
                 }}

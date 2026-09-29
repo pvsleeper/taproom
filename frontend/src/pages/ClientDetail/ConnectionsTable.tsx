@@ -15,6 +15,13 @@ import { NameBadge } from './NameBadge'
 
 const columnHelper = createColumnHelper<EnrichedConnection>()
 
+function formatRate(bps: number | null): string {
+  if (bps === null) return '–'
+  const mbps = bps / 1_000_000
+  if (mbps < 0.1) return '<0.1 Mbps'
+  return `${mbps < 10 ? mbps.toFixed(1) : Math.round(mbps)} Mbps`
+}
+
 function formatAge(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
@@ -43,7 +50,7 @@ export function ConnectionsTable({
   markerKeyFor,
 }: ConnectionsTableProps) {
   const [query, setQuery] = useState('')
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'bytes', desc: true }])
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'rate', desc: true }])
   const [localOpen, setLocalOpen] = useState(false)
 
   const filtered = useMemo(() => {
@@ -113,9 +120,21 @@ export function ConnectionsTable({
           <span className="text-xs text-text-muted">{info.row.original.org ?? '—'}</span>
         ),
       }),
+      columnHelper.accessor((row) => (row.downBps ?? 0) + (row.upBps ?? 0), {
+        id: 'rate',
+        header: 'Rate',
+        cell: (info) => {
+          const c = info.row.original
+          return (
+            <span className="font-mono text-xs">
+              ↓{formatRate(c.downBps)} ↑{formatRate(c.upBps)}
+            </span>
+          )
+        },
+      }),
       columnHelper.accessor('bytes', {
-        header: 'Traffic',
-        cell: (info) => <span className="font-mono text-xs">{formatBytes(info.getValue())}</span>,
+        header: 'Total',
+        cell: (info) => <span className="font-mono text-xs text-text-muted">{formatBytes(info.getValue())}</span>,
       }),
       columnHelper.accessor('ageSeconds', {
         header: 'Age',

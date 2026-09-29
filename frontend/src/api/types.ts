@@ -50,6 +50,8 @@ export interface EnrichedConnection {
   packets: number
   ageSeconds: number
   state: string
+  downBps: number | null
+  upBps: number | null
 }
 
 export interface ConnectionMarker {
@@ -59,6 +61,8 @@ export interface ConnectionMarker {
   label: string
   connectionCount: number
   bytes: number
+  downBps: number
+  upBps: number
 }
 
 export interface LocalConnection {
@@ -112,4 +116,13 @@ export interface DnsResult {
   topDomains: TopDomain[]
   topBlocked: TopBlockedDomain[]
   recent: RecentQuery[]
+}
+
+export interface BandwidthResult {
+  mac: string
+  sampledAt: string
+  downBps: number
+  upBps: number
+  addresses: string[]
+  source: SourceStatus
 }

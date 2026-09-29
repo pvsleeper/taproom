@@ -2,10 +2,12 @@ import { AlertTriangle, Compass } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useClient, useConnections, useDns } from '../../api/useClientDetail'
+import { BandwidthCard } from './BandwidthCard'
 import { ConnectionMap } from './ConnectionMap'
 import { ConnectionsTable } from './ConnectionsTable'
 import { DetailHeader } from './DetailHeader'
 import { DnsPanel } from './DnsPanel'
+import { useBandwidthBuffer } from './useBandwidthBuffer'
 
 function markerKeyFor(lat: number, lon: number): string {
   return `${Math.round(lat * 10) / 10},${Math.round(lon * 10) / 10}`
@@ -17,6 +19,7 @@ export function ClientDetailPage() {
   const { data: connections, isPending: connectionsPending } = useConnections(mac)
   const [minutes, setMinutes] = useState(60)
   const { data: dns, isPending: dnsPending } = useDns(mac, minutes, 50)
+  const bandwidth = useBandwidthBuffer(mac)
 
   const [locationFilterKey, setLocationFilterKey] = useState<string | null>(null)
   const [hoveredRemote, setHoveredRemote] = useState<string | null>(null)
@@ -60,6 +63,13 @@ export function ClientDetailPage() {
             <span>Couldn't reach the firewall state table. Connections may be stale.</span>
           </div>
         )}
+
+        <BandwidthCard
+          points={bandwidth.points}
+          currentDownBps={bandwidth.current?.downBps}
+          currentUpBps={bandwidth.current?.upBps}
+          sourceOk={bandwidth.current?.source.ok ?? true}
+        />
 
         <ConnectionMap
           connections={connections?.connections ?? []}
