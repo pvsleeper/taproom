@@ -21,23 +21,15 @@ public sealed record ClientMatchSet
 /// </summary>
 public sealed class ClientIdentityResolver
 {
-    private readonly IOpnsenseClient _opnsense;
     private readonly DomainResolver _domainResolver;
 
-    public ClientIdentityResolver(IOpnsenseClient opnsense, DomainResolver domainResolver)
+    public ClientIdentityResolver(DomainResolver domainResolver)
     {
-        _opnsense = opnsense;
         _domainResolver = domainResolver;
     }
 
-    public async Task<ClientMatchSet> ResolveAsync(string mac, string ipv4, CancellationToken cancellationToken)
+    public async Task<ClientMatchSet> ResolveAsync(string ipv4, IReadOnlyList<string> addresses, CancellationToken cancellationToken)
     {
-        var ndp = await _opnsense.GetNdpTableAsync(cancellationToken);
-        var ipv6Addresses = ndp.Where(n => n.Mac == mac).Select(n => n.Ipv6).ToList();
-
-        var addresses = new List<string> { ipv4 };
-        addresses.AddRange(ipv6Addresses);
-
         var names = new HashSet<string>();
         var searchPhrases = new List<string>();
 

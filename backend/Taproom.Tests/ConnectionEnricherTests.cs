@@ -11,7 +11,8 @@ public class ConnectionEnricherTests
             RemoteIp = ip,
             RemotePort = port,
             State = state,
-            Bytes = bytes,
+            DownBytes = bytes,
+            UpBytes = 0,
             Packets = packets,
             AgeSeconds = age,
         };

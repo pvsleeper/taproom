@@ -1,13 +1,20 @@
+using System.Text.Json.Serialization;
+
 namespace Taproom.Api.Clients;
 
-/// <summary>One pre-NAT live connection from the OPNsense firewall state table.</summary>
+/// <summary>
+/// One pre-NAT live connection from the OPNsense firewall state table. DownBytes/UpBytes come from the
+/// state's own [out, in] byte counters (confirmed against a live download: the second element is what
+/// grows during a download), kept separate so per-direction rates can be computed between refreshes.
+/// </summary>
 public sealed record FirewallState
 {
     public required string Protocol { get; init; }
     public required string RemoteIp { get; init; }
     public required int RemotePort { get; init; }
     public required string State { get; init; }
-    public required long Bytes { get; init; }
+    public required long DownBytes { get; init; }
+    public required long UpBytes { get; init; }
     public required long Packets { get; init; }
     public required int AgeSeconds { get; init; }
 }
@@ -67,6 +74,14 @@ public sealed record EnrichedConnection
     public required long Packets { get; init; }
     public required int AgeSeconds { get; init; }
     public required string State { get; init; }
+    public long? DownBps { get; init; }
+    public long? UpBps { get; init; }
+
+    /// <summary>Grouped byte totals per direction, used to compute the rate above — not part of the public API shape.</summary>
+    [JsonIgnore]
+    public long DownBytes { get; init; }
+    [JsonIgnore]
+    public long UpBytes { get; init; }
 }
 
 public sealed record ConnectionMarker
@@ -77,6 +92,8 @@ public sealed record ConnectionMarker
     public required string Label { get; init; }
     public required int ConnectionCount { get; init; }
     public required long Bytes { get; init; }
+    public long DownBps { get; init; }
+    public long UpBps { get; init; }
 }
 
 public sealed record LocalConnection
@@ -134,6 +151,16 @@ public sealed record DnsTotals
 {
     public required int Queries { get; init; }
     public required int Blocked { get; init; }
+}
+
+public sealed record BandwidthResult
+{
+    public required string Mac { get; init; }
+    public required DateTimeOffset SampledAt { get; init; }
+    public required long DownBps { get; init; }
+    public required long UpBps { get; init; }
+    public required IReadOnlyList<string> Addresses { get; init; }
+    public required SourceStatus Source { get; init; }
 }
 
 public sealed record DnsResult

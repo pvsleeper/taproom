@@ -22,6 +22,9 @@ builder.Services.AddSingleton<DomainResolver>();
 builder.Services.AddSingleton<ClientIdentityResolver>();
 builder.Services.AddSingleton<ConnectionsService>();
 builder.Services.AddSingleton<DnsPanelService>();
+builder.Services.AddSingleton<InterfaceSampler>();
+builder.Services.AddSingleton<BandwidthService>();
+builder.Services.AddSingleton<ConnectionRateTracker>();
 
 builder.Services.AddHttpClient<IOmadaClient, OmadaClient>((sp, http) =>
 {
@@ -63,6 +66,7 @@ void ConfigureOpnsenseClient(IHttpClientBuilder clientBuilder)
 ConfigureOpnsenseClient(builder.Services.AddHttpClient<IOpnsenseClient, OpnsenseClient>());
 ConfigureOpnsenseClient(builder.Services.AddHttpClient<IStatesClient, StatesClient>());
 ConfigureOpnsenseClient(builder.Services.AddHttpClient<IUnboundLogClient, UnboundLogClient>());
+ConfigureOpnsenseClient(builder.Services.AddHttpClient<ITopTalkersClient, TopTalkersClient>());
 
 var app = builder.Build();
 
@@ -90,6 +94,12 @@ app.MapGet("/api/clients/{mac}/connections", async (string mac, ConnectionsServi
 app.MapGet("/api/clients/{mac}/dns", async (string mac, int? minutes, int? tail, DnsPanelService service, CancellationToken ct) =>
 {
     var result = await service.GetDnsAsync(mac, minutes ?? 60, tail ?? 50, ct);
+    return result is null ? Results.NotFound() : Results.Ok(result);
+});
+
+app.MapGet("/api/clients/{mac}/bandwidth", async (string mac, BandwidthService service, CancellationToken ct) =>
+{
+    var result = await service.GetBandwidthAsync(mac, ct);
     return result is null ? Results.NotFound() : Results.Ok(result);
 });
 

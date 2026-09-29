@@ -14,7 +14,8 @@
       "ApiSecret": "...",
       "AllowInvalidCertificate": true,
       "DhcpProvider": "Dnsmasq",
-      "DnsServer": "10.0.1.1"
+      "DnsServer": "10.0.1.1",
+      "LanInterface": "lan"
     },
     "Home": {
       "Latitude": -27.47,

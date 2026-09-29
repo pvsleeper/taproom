@@ -20,8 +20,10 @@ public sealed class ConnectionsService
 
     private readonly IStatesClient _states;
     private readonly IUnboundLogClient _unboundLog;
+    private readonly IOpnsenseClient _opnsense;
     private readonly DomainResolver _domainResolver;
     private readonly ClientIdentityResolver _identityResolver;
+    private readonly ConnectionRateTracker _rateTracker;
     private readonly GeoIpService _geoIp;
     private readonly ClientSnapshotProvider _snapshotProvider;
     private readonly IMemoryCache _cache;
@@ -37,8 +39,10 @@ public sealed class ConnectionsService
     public ConnectionsService(
         IStatesClient states,
         IUnboundLogClient unboundLog,
+        IOpnsenseClient opnsense,
         DomainResolver domainResolver,
         ClientIdentityResolver identityResolver,
+        ConnectionRateTracker rateTracker,
         GeoIpService geoIp,
         ClientSnapshotProvider snapshotProvider,
         IMemoryCache cache,
@@ -47,8 +51,10 @@ public sealed class ConnectionsService
     {
         _states = states;
         _unboundLog = unboundLog;
+        _opnsense = opnsense;
         _domainResolver = domainResolver;
         _identityResolver = identityResolver;
+        _rateTracker = rateTracker;
         _geoIp = geoIp;
         _snapshotProvider = snapshotProvider;
         _cache = cache;
@@ -100,13 +106,15 @@ public sealed class ConnectionsService
     private async Task<ConnectionsResult> BuildAsync(
         string mac, string ip, HomeLocation home, IReadOnlyList<NetworkClient> allClients, CancellationToken cancellationToken)
     {
+        var addresses = await ClientAddresses.GetAsync(_opnsense, mac, ip, cancellationToken);
+
         var statesOk = true;
         string? statesError = null;
         IReadOnlyList<FirewallState> states = _lastStatesByIp.GetValueOrDefault(ip, []);
         try
         {
             using var cts = new CancellationTokenSource(SourceTimeout);
-            states = await _states.GetStatesForClientAsync(ip, cts.Token);
+            states = await _states.GetStatesForClientAsync(addresses, cts.Token);
             _lastStatesByIp[ip] = states;
         }
         catch (Exception ex)
@@ -122,7 +130,7 @@ public sealed class ConnectionsService
         try
         {
             using var cts = new CancellationTokenSource(SourceTimeout);
-            var identity = await _identityResolver.ResolveAsync(mac, ip, cts.Token);
+            var identity = await _identityResolver.ResolveAsync(ip, addresses, cts.Token);
             recentQueries = await _unboundLog.GetQueriesForClientAsync(identity, DomainLookbackWindow, cts.Token);
             _lastQueriesByIp[ip] = recentQueries;
         }
@@ -172,14 +180,36 @@ public sealed class ConnectionsService
 
         var outcome = ConnectionEnricher.Enrich(states, dnsNamesByIp, ptrNamesByIp, geoByIp, localNamesByIp, recentQueries.Count);
 
+        var now = DateTimeOffset.UtcNow;
+        var ratedConnections = outcome.Connections
+            .Select(c =>
+            {
+                var key = $"{mac}:{c.RemoteIp}:{c.RemotePort}:{c.Protocol}";
+                var rate = _rateTracker.Update(key, c.DownBytes, c.UpBytes, now);
+                return c with { DownBps = rate.DownBps, UpBps = rate.UpBps };
+            })
+            .ToList();
+
+        var rateByMarkerKey = ratedConnections
+            .GroupBy(c => ConnectionEnricher.MarkerKeyFor(c.Lat!.Value, c.Lon!.Value))
+            .ToDictionary(g => g.Key, g => (Down: g.Sum(c => c.DownBps ?? 0), Up: g.Sum(c => c.UpBps ?? 0)));
+
+        var ratedMarkers = outcome.Markers
+            .Select(m =>
+            {
+                var (down, up) = rateByMarkerKey.GetValueOrDefault(m.Key, (0, 0));
+                return m with { DownBps = down, UpBps = up };
+            })
+            .ToList();
+
         return new ConnectionsResult
         {
             Mac = mac,
             Ip = ip,
-            GeneratedAt = DateTimeOffset.UtcNow,
+            GeneratedAt = now,
             Home = home,
-            Connections = outcome.Connections,
-            Markers = outcome.Markers,
+            Connections = ratedConnections,
+            Markers = ratedMarkers,
             Local = outcome.Local,
             UnknownLocation = outcome.UnknownLocation,
             Hints = outcome.Hints,

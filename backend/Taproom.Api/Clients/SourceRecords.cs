@@ -44,3 +44,11 @@ public sealed record NdpEntry
     public required string Mac { get; init; }
     public required string Ipv6 { get; init; }
 }
+
+/// <summary>One address's live rate from OPNsense's top-talkers sample, already in bits per second.</summary>
+public sealed record TopTalkerRecord
+{
+    public required string Address { get; init; }
+    public required long DownBps { get; init; }
+    public required long UpBps { get; init; }
+}

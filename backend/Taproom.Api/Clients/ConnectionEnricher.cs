@@ -58,6 +58,9 @@ public static class ConnectionEnricher
             var (name, nameSource, otherNames) = ResolveName(ip, dnsNamesByIp, ptrNamesByIp, geoByIp);
             geoByIp.TryGetValue(ip, out var geo);
 
+            var downBytes = group.Sum(s => s.DownBytes);
+            var upBytes = group.Sum(s => s.UpBytes);
+
             var connection = new EnrichedConnection
             {
                 RemoteIp = ip,
@@ -72,10 +75,12 @@ public static class ConnectionEnricher
                 Lon = geo?.Lon,
                 Asn = geo?.Asn,
                 Org = geo?.Org,
-                Bytes = group.Sum(s => s.Bytes),
+                Bytes = downBytes + upBytes,
                 Packets = group.Sum(s => s.Packets),
                 AgeSeconds = group.Max(s => s.AgeSeconds),
                 State = group[0].State,
+                DownBytes = downBytes,
+                UpBytes = upBytes,
             };
 
             if (connection.Lat is not null && connection.Lon is not null)
@@ -129,13 +134,15 @@ public static class ConnectionEnricher
         return (ip, NameSource.Ip, []);
     }
 
+    /// <summary>City-level grouping key (~11km): round to 1 decimal degree, matching the spec's own example key.</summary>
+    public static string MarkerKeyFor(double lat, double lon) => $"{Math.Round(lat, 1)},{Math.Round(lon, 1)}";
+
     private static IReadOnlyList<ConnectionMarker> BuildMarkers(IReadOnlyList<EnrichedConnection> connections)
     {
         var groups = new Dictionary<string, List<EnrichedConnection>>();
         foreach (var c in connections)
         {
-            // City-level grouping: round to 1 decimal degree (~11km), matching the spec's own example key.
-            var key = $"{Math.Round(c.Lat!.Value, 1)},{Math.Round(c.Lon!.Value, 1)}";
+            var key = MarkerKeyFor(c.Lat!.Value, c.Lon!.Value);
             if (!groups.TryGetValue(key, out var list))
             {
                 list = [];

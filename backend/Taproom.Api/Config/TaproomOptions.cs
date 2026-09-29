@@ -49,4 +49,6 @@ public sealed class OpnsenseOptions
     public DhcpProvider DhcpProvider { get; set; } = DhcpProvider.Dnsmasq;
     /// <summary>Resolver used to re-resolve domains for connection enrichment — normally the router itself.</summary>
     public string DnsServer { get; set; } = "";
+    /// <summary>Logical interface name for the top-talkers bandwidth sample, e.g. "lan".</summary>
+    public string LanInterface { get; set; } = "lan";
 }

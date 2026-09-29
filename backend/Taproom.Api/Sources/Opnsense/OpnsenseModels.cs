@@ -4,6 +4,31 @@ namespace Taproom.Api.Sources.Opnsense;
 
 // Confirmed against a live router (OPNsense, dnsmasq DHCP backend) — see docs/Taproom — Phase 1 Spec.md.
 
+/// <summary>
+/// GET /api/diagnostics/traffic/top/{interface} returns { "&lt;interface&gt;": { "records": [...] } }.
+/// Confirmed against a live router: rate_bits_in/out are already instantaneous bits-per-second (not a
+/// cumulative count over the sample), and — counter to the phase 4 spec's assumption — "in" is a live
+/// download to that address and "out" is its upload (confirmed by watching real download/upload traffic;
+/// the field is labeled from the host's own perspective, not the interface's routing direction).
+/// </summary>
+public sealed class OpnsenseTrafficTopResult
+{
+    [JsonPropertyName("records")]
+    public List<OpnsenseTopTalkerDto> Records { get; set; } = new();
+}
+
+public sealed class OpnsenseTopTalkerDto
+{
+    [JsonPropertyName("address")]
+    public string? Address { get; set; }
+
+    [JsonPropertyName("rate_bits_in")]
+    public long RateBitsIn { get; set; }
+
+    [JsonPropertyName("rate_bits_out")]
+    public long RateBitsOut { get; set; }
+}
+
 /// <summary>One row from GET /api/diagnostics/interface/get_arp.</summary>
 public sealed class OpnsenseArpEntryDto
 {

@@ -12,12 +12,18 @@ public sealed class StatesClient : IStatesClient
         _http = http;
     }
 
-    public Task<IReadOnlyList<FirewallState>> GetStatesForClientAsync(string clientIp, CancellationToken cancellationToken) =>
-        TransientHttpRetry.RunAsync(() => FetchAsync(clientIp, cancellationToken), cancellationToken);
-
-    private async Task<IReadOnlyList<FirewallState>> FetchAsync(string clientIp, CancellationToken cancellationToken)
+    /// <summary>Queries once per address (IPv4 and any IPv6) and merges results, so a dual-stack client's IPv6-sourced connections aren't missed.</summary>
+    public async Task<IReadOnlyList<FirewallState>> GetStatesForClientAsync(
+        IReadOnlyList<string> clientAddresses, CancellationToken cancellationToken)
     {
-        var body = new { current = 1, rowCount = 500, searchPhrase = clientIp };
+        var perAddress = await Task.WhenAll(
+            clientAddresses.Select(address => TransientHttpRetry.RunAsync(() => FetchAsync(address, cancellationToken), cancellationToken)));
+        return perAddress.SelectMany(states => states).ToList();
+    }
+
+    private async Task<IReadOnlyList<FirewallState>> FetchAsync(string address, CancellationToken cancellationToken)
+    {
+        var body = new { current = 1, rowCount = 500, searchPhrase = address };
         var response = await _http.PostAsJsonAsync("/api/diagnostics/firewall/query_states", body, cancellationToken);
         response.EnsureSuccessStatusCode();
 
@@ -27,9 +33,15 @@ public sealed class StatesClient : IStatesClient
         foreach (var row in result?.Rows ?? [])
         {
             // Each real connection appears twice (pre-NAT and post-NAT); keep only the row where this
-            // client's own IP is literally the source, which is always the pre-NAT one.
-            if (!string.Equals(row.SrcAddr, clientIp, StringComparison.Ordinal)) continue;
+            // client's own address is literally the source, which is always the pre-NAT one.
+            if (!string.Equals(row.SrcAddr, address, StringComparison.Ordinal)) continue;
             if (row.DstAddr is null || !int.TryParse(row.DstPort, out var remotePort)) continue;
+
+            // bytes/pkts are [out, in] relative to this client (confirmed against a live download: the
+            // second element is what grows while downloading).
+            var bytes = row.Bytes ?? [];
+            var upBytes = bytes.Length > 0 ? bytes[0] : 0;
+            var downBytes = bytes.Length > 1 ? bytes[1] : 0;
 
             states.Add(new FirewallState
             {
@@ -37,7 +49,8 @@ public sealed class StatesClient : IStatesClient
                 RemoteIp = row.DstAddr,
                 RemotePort = remotePort,
                 State = row.State?.Split(':')[0] ?? "UNKNOWN",
-                Bytes = Sum(row.Bytes),
+                DownBytes = downBytes,
+                UpBytes = upBytes,
                 Packets = Sum(row.Packets),
                 AgeSeconds = ParseAgeSeconds(row.Age),
             });

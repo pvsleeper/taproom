@@ -4,5 +4,5 @@ namespace Taproom.Api.Sources.Opnsense;
 
 public interface IStatesClient
 {
-    Task<IReadOnlyList<FirewallState>> GetStatesForClientAsync(string clientIp, CancellationToken cancellationToken);
+    Task<IReadOnlyList<FirewallState>> GetStatesForClientAsync(IReadOnlyList<string> clientAddresses, CancellationToken cancellationToken);
 }
