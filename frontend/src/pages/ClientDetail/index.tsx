@@ -102,7 +102,6 @@ export function ClientDetailPage() {
               data={dns}
               isPending={dnsPending}
               onDomainClick={setHighlightedDomain}
-              sourceOk={connections?.sources.dns.ok ?? true}
             />
           </div>
         </div>

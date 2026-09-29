@@ -14,10 +14,9 @@ interface DnsPanelProps {
   data: DnsResult | undefined
   isPending: boolean
   onDomainClick: (domain: string) => void
-  sourceOk: boolean
 }
 
-export function DnsPanel({ minutes, onMinutesChange, data, isPending, onDomainClick, sourceOk }: DnsPanelProps) {
+export function DnsPanel({ minutes, onMinutesChange, data, isPending, onDomainClick }: DnsPanelProps) {
   const [paused, setPaused] = useState(false)
   const [frozenRecent, setFrozenRecent] = useState<DnsResult['recent']>([])
 
@@ -53,7 +52,7 @@ export function DnsPanel({ minutes, onMinutesChange, data, isPending, onDomainCl
         </div>
       </div>
 
-      {!sourceOk && (
+      {data && !data.source.ok && (
         <div className="flex items-center gap-1.5 rounded-md border border-warn/30 bg-warn/10 px-2 py-1.5 text-xs text-warn">
           <AlertTriangle size={12} />
           Unbound DNS log unavailable
@@ -64,7 +63,7 @@ export function DnsPanel({ minutes, onMinutesChange, data, isPending, onDomainCl
         <div className="h-4 w-full animate-pulse rounded bg-surface-hover" />
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             <div className="rounded-md border border-border bg-surface p-2">
               <div className="text-lg font-semibold tabular-nums">{data.totals.queries}</div>
               <div className="text-[10px] text-text-muted">Queries</div>
@@ -72,6 +71,10 @@ export function DnsPanel({ minutes, onMinutesChange, data, isPending, onDomainCl
             <div className="rounded-md border border-border bg-surface p-2">
               <div className="text-lg font-semibold tabular-nums">{data.totals.blocked}</div>
               <div className="text-[10px] text-text-muted">Blocked</div>
+            </div>
+            <div className="rounded-md border border-border bg-surface p-2">
+              <div className="text-lg font-semibold tabular-nums text-warn">{data.totals.failed}</div>
+              <div className="text-[10px] text-text-muted">Failed</div>
             </div>
             <div className="rounded-md border border-border bg-surface p-2">
               <div className="text-lg font-semibold tabular-nums">{blockedPct}%</div>
@@ -133,9 +136,18 @@ export function DnsPanel({ minutes, onMinutesChange, data, isPending, onDomainCl
               {recent.map((q, i) => (
                 <div
                   key={`${q.time}-${q.domain}-${i}`}
-                  className={`flex justify-between gap-2 rounded px-1 py-0.5 ${q.action === 'block' ? 'bg-danger/10 text-danger' : ''}`}
+                  className={`flex items-center justify-between gap-2 rounded px-1 py-0.5 ${
+                    q.action === 'block' ? 'bg-danger/10 text-danger' : q.failed ? 'text-warn/80' : ''
+                  }`}
                 >
-                  <span className="truncate">{q.domain}</span>
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate">{q.domain}</span>
+                    {q.failed && (
+                      <span className="shrink-0 rounded bg-warn/10 px-1 py-0.5 text-[9px] font-medium text-warn">
+                        {q.rcode}
+                      </span>
+                    )}
+                  </span>
                   <span className="shrink-0 text-text-muted">{new Date(q.time).toLocaleTimeString()}</span>
                 </div>
               ))}

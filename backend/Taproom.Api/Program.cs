@@ -50,6 +50,10 @@ void ConfigureOpnsenseClient(IHttpClientBuilder clientBuilder)
         http.BaseAddress = new Uri(options.BaseUrl);
         var basicAuth = Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($"{options.ApiKey}:{options.ApiSecret}"));
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", basicAuth);
+        // OPNsense's web backend occasionally corrupts chunked-transfer framing on a reused HTTP/1.1
+        // connection (curl against the same endpoint never reproduces this; a fresh .NET HttpClient
+        // connection does, repeatably, for larger responses) — force a new connection per request.
+        http.DefaultRequestHeaders.ConnectionClose = true;
     })
     .ConfigurePrimaryHttpMessageHandler(sp =>
     {

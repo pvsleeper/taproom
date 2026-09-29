@@ -107,15 +107,17 @@ export interface RecentQuery {
   domain: string
   type: string
   action: 'pass' | 'block'
+  failed: boolean
   rcode: string
 }
 
 export interface DnsResult {
   windowMinutes: number
-  totals: { queries: number; blocked: number }
+  totals: { queries: number; blocked: number; failed: number }
   topDomains: TopDomain[]
   topBlocked: TopBlockedDomain[]
   recent: RecentQuery[]
+  source: SourceStatus
 }
 
 export interface BandwidthResult {

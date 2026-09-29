@@ -19,13 +19,18 @@ public sealed record FirewallState
     public required int AgeSeconds { get; init; }
 }
 
-/// <summary>One row from the Unbound DNS query log.</summary>
+/// <summary>
+/// One row from the Unbound DNS query log. Blocked means the resolver actively refused it (action != Pass,
+/// or a blocklist matched even on a Pass row); Failed means it was allowed through but the lookup itself
+/// didn't succeed (Pass with a non-NOERROR rcode, e.g. NXDOMAIN/SERVFAIL) — a different thing from being blocked.
+/// </summary>
 public sealed record DnsQueryEntry
 {
     public required DateTimeOffset Time { get; init; }
     public required string Domain { get; init; }
     public required string Type { get; init; }
     public required bool Blocked { get; init; }
+    public required bool Failed { get; init; }
     public string? Blocklist { get; init; }
     public required string Rcode { get; init; }
 }
@@ -144,6 +149,7 @@ public sealed record RecentQuery
     public required string Domain { get; init; }
     public required string Type { get; init; }
     public required string Action { get; init; }
+    public required bool Failed { get; init; }
     public required string Rcode { get; init; }
 }
 
@@ -151,6 +157,7 @@ public sealed record DnsTotals
 {
     public required int Queries { get; init; }
     public required int Blocked { get; init; }
+    public required int Failed { get; init; }
 }
 
 public sealed record BandwidthResult
@@ -170,4 +177,5 @@ public sealed record DnsResult
     public required IReadOnlyList<TopDomain> TopDomains { get; init; }
     public required IReadOnlyList<TopBlockedDomain> TopBlocked { get; init; }
     public required IReadOnlyList<RecentQuery> Recent { get; init; }
+    public required SourceStatus Source { get; init; }
 }

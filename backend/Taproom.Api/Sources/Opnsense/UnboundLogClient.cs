@@ -77,7 +77,8 @@ public sealed class UnboundLogClient : IUnboundLogClient
                     Time = time,
                     Domain = row.Domain.TrimEnd('.'),
                     Type = row.Type ?? "",
-                    Blocked = !string.Equals(row.Action, "Pass", StringComparison.OrdinalIgnoreCase),
+                    Blocked = DnsQueryClassifier.IsBlocked(row.Action, row.Blocklist),
+                    Failed = DnsQueryClassifier.IsFailed(row.Action, row.Blocklist, row.Rcode),
                     Blocklist = string.IsNullOrEmpty(row.Blocklist) ? null : row.Blocklist,
                     Rcode = row.Rcode ?? "",
                 });

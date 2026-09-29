@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Caching.Memory;
 using Taproom.Api.Sources.Opnsense;
 
@@ -14,16 +15,22 @@ public sealed class DnsPanelService
     private readonly ClientIdentityResolver _identityResolver;
     private readonly ClientSnapshotProvider _snapshotProvider;
     private readonly IMemoryCache _cache;
+    private readonly ILogger<DnsPanelService> _logger;
+
+    // Reused when a fetch fails (the same OPNsense chunk-encoding flakiness handled elsewhere), so a
+    // transient blip degrades the panel instead of taking the whole endpoint down with it.
+    private readonly ConcurrentDictionary<string, IReadOnlyList<DnsQueryEntry>> _lastQueriesByKey = new();
 
     public DnsPanelService(
         IUnboundLogClient unboundLog, IOpnsenseClient opnsense, ClientIdentityResolver identityResolver,
-        ClientSnapshotProvider snapshotProvider, IMemoryCache cache)
+        ClientSnapshotProvider snapshotProvider, IMemoryCache cache, ILogger<DnsPanelService> logger)
     {
         _unboundLog = unboundLog;
         _opnsense = opnsense;
         _identityResolver = identityResolver;
         _snapshotProvider = snapshotProvider;
         _cache = cache;
+        _logger = logger;
     }
 
     public async Task<DnsResult?> GetDnsAsync(string mac, int minutes, int tail, CancellationToken cancellationToken)
@@ -40,22 +47,37 @@ public sealed class DnsPanelService
             return new DnsResult
             {
                 WindowMinutes = minutes,
-                Totals = new DnsTotals { Queries = 0, Blocked = 0 },
+                Totals = new DnsTotals { Queries = 0, Blocked = 0, Failed = 0 },
                 TopDomains = [],
                 TopBlocked = [],
                 Recent = [],
+                Source = new SourceStatus { Ok = true },
             };
         }
 
-        var cacheKey = $"dns:{mac}:{client.Ip}:{minutes}:{tail}";
+        var lastGoodKey = $"{mac}:{client.Ip}:{minutes}";
+        var cacheKey = $"dns:{lastGoodKey}:{tail}";
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
 
-            using var cts = new CancellationTokenSource(SourceTimeout);
-            var addresses = await ClientAddresses.GetAsync(_opnsense, mac, client.Ip, cts.Token);
-            var identity = await _identityResolver.ResolveAsync(client.Ip, addresses, cts.Token);
-            var queries = await _unboundLog.GetQueriesForClientAsync(identity, TimeSpan.FromMinutes(minutes), cts.Token);
+            var ok = true;
+            string? error = null;
+            var queries = _lastQueriesByKey.GetValueOrDefault(lastGoodKey, []);
+            try
+            {
+                using var cts = new CancellationTokenSource(SourceTimeout);
+                var addresses = await ClientAddresses.GetAsync(_opnsense, mac, client.Ip, cts.Token);
+                var identity = await _identityResolver.ResolveAsync(client.Ip, addresses, cts.Token);
+                queries = await _unboundLog.GetQueriesForClientAsync(identity, TimeSpan.FromMinutes(minutes), cts.Token);
+                _lastQueriesByKey[lastGoodKey] = queries;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Unbound query log fetch failed for {Mac}", mac);
+                ok = false;
+                error = ex.Message;
+            }
 
             var byDomain = queries.GroupBy(q => q.Domain).ToList();
 
@@ -87,6 +109,7 @@ public sealed class DnsPanelService
                     Domain = q.Domain,
                     Type = q.Type,
                     Action = q.Blocked ? "block" : "pass",
+                    Failed = q.Failed,
                     Rcode = q.Rcode,
                 })
                 .ToList();
@@ -94,10 +117,16 @@ public sealed class DnsPanelService
             return new DnsResult
             {
                 WindowMinutes = minutes,
-                Totals = new DnsTotals { Queries = queries.Count, Blocked = queries.Count(q => q.Blocked) },
+                Totals = new DnsTotals
+                {
+                    Queries = queries.Count,
+                    Blocked = queries.Count(q => q.Blocked),
+                    Failed = queries.Count(q => q.Failed),
+                },
                 TopDomains = topDomains,
                 TopBlocked = topBlocked,
                 Recent = recent,
+                Source = new SourceStatus { Ok = ok, Error = error },
             };
         });
     }
