@@ -96,9 +96,20 @@ public sealed class DomainResolver
         }
     }
 
-    public async Task<string?> ReversePtrAsync(string ip, CancellationToken cancellationToken)
+    /// <summary>PTR fallback (rung 2) for naming a remote connection — cached for 1 hour.</summary>
+    public Task<string?> ReversePtrAsync(string ip, CancellationToken cancellationToken) =>
+        ReversePtrCoreAsync($"ptr:{ip}", ip, TimeSpan.FromHours(1), cancellationToken);
+
+    /// <summary>
+    /// PTR lookup for identifying which name OPNsense's Unbound log might use for one of THIS client's
+    /// own addresses (its "client" field is sometimes an IP, sometimes a resolved name). Cached for only
+    /// 10 minutes since it needs to track the client's current identity, not just name a remote endpoint.
+    /// </summary>
+    public Task<string?> ResolveClientNameAsync(string ip, CancellationToken cancellationToken) =>
+        ReversePtrCoreAsync($"client-ptr:{ip}", ip, TimeSpan.FromMinutes(10), cancellationToken);
+
+    private async Task<string?> ReversePtrCoreAsync(string cacheKey, string ip, TimeSpan ttl, CancellationToken cancellationToken)
     {
-        var cacheKey = $"ptr:{ip}";
         if (_cache.TryGetValue(cacheKey, out string? cached))
         {
             return cached;
@@ -110,12 +121,12 @@ public sealed class DomainResolver
             cts.CancelAfter(TimeSpan.FromSeconds(1));
             var result = await _dns.QueryReverseAsync(IPAddress.Parse(ip), cancellationToken: cts.Token);
             var ptr = result.Answers.PtrRecords().FirstOrDefault()?.PtrDomainName?.Value.TrimEnd('.');
-            _cache.Set(cacheKey, ptr, TimeSpan.FromHours(1));
+            _cache.Set(cacheKey, ptr, ttl);
             return ptr;
         }
         catch (Exception)
         {
-            _cache.Set(cacheKey, (string?)null, TimeSpan.FromHours(1));
+            _cache.Set(cacheKey, (string?)null, ttl);
             return null;
         }
     }

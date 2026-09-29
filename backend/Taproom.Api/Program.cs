@@ -19,6 +19,7 @@ builder.Services.AddSingleton<ClientSnapshotProvider>();
 builder.Services.AddSingleton<GeoIpService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<DomainResolver>();
+builder.Services.AddSingleton<ClientIdentityResolver>();
 builder.Services.AddSingleton<ConnectionsService>();
 builder.Services.AddSingleton<DnsPanelService>();
 

@@ -10,12 +10,15 @@ public sealed class DnsPanelService
     private static readonly TimeSpan SourceTimeout = TimeSpan.FromSeconds(10);
 
     private readonly IUnboundLogClient _unboundLog;
+    private readonly ClientIdentityResolver _identityResolver;
     private readonly ClientSnapshotProvider _snapshotProvider;
     private readonly IMemoryCache _cache;
 
-    public DnsPanelService(IUnboundLogClient unboundLog, ClientSnapshotProvider snapshotProvider, IMemoryCache cache)
+    public DnsPanelService(
+        IUnboundLogClient unboundLog, ClientIdentityResolver identityResolver, ClientSnapshotProvider snapshotProvider, IMemoryCache cache)
     {
         _unboundLog = unboundLog;
+        _identityResolver = identityResolver;
         _snapshotProvider = snapshotProvider;
         _cache = cache;
     }
@@ -47,7 +50,8 @@ public sealed class DnsPanelService
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
 
             using var cts = new CancellationTokenSource(SourceTimeout);
-            var queries = await _unboundLog.GetQueriesForClientAsync(client.Ip, TimeSpan.FromMinutes(minutes), cts.Token);
+            var identity = await _identityResolver.ResolveAsync(mac, client.Ip, cts.Token);
+            var queries = await _unboundLog.GetQueriesForClientAsync(identity, TimeSpan.FromMinutes(minutes), cts.Token);
 
             var byDomain = queries.GroupBy(q => q.Domain).ToList();
 

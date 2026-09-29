@@ -16,7 +16,28 @@ public sealed class UnboundLogClient : IUnboundLogClient
     }
 
     public async Task<IReadOnlyList<DnsQueryEntry>> GetQueriesForClientAsync(
-        string clientIp, TimeSpan window, CancellationToken cancellationToken)
+        ClientMatchSet client, TimeSpan window, CancellationToken cancellationToken)
+    {
+        // We can't know in advance which literal value (an IP or a resolved name) the log uses for this
+        // device, so every candidate search phrase is queried and the (deduplicated) results merged.
+        var perPhraseResults = await Task.WhenAll(
+            client.SearchPhrases.Select(phrase => FetchForPhraseAsync(phrase, client.Names, window, cancellationToken)));
+
+        var seen = new HashSet<(long, string, string)>();
+        var merged = new List<DnsQueryEntry>();
+        foreach (var entry in perPhraseResults.SelectMany(r => r))
+        {
+            if (seen.Add((entry.Time.ToUnixTimeSeconds(), entry.Domain, entry.Type)))
+            {
+                merged.Add(entry);
+            }
+        }
+
+        return merged;
+    }
+
+    private async Task<IReadOnlyList<DnsQueryEntry>> FetchForPhraseAsync(
+        string searchPhrase, IReadOnlySet<string> matchNames, TimeSpan window, CancellationToken cancellationToken)
     {
         var cutoff = DateTimeOffset.UtcNow - window;
         var entries = new List<DnsQueryEntry>();
@@ -27,7 +48,10 @@ public sealed class UnboundLogClient : IUnboundLogClient
             var pageNumber = page;
             var result = await TransientHttpRetry.RunAsync(async () =>
             {
-                var body = new { current = pageNumber, rowCount = PageSize, searchPhrase = clientIp };
+                // searchPhrase does a substring match across all columns (so it also returns other
+                // clients' lookups OF this name as a domain) — it's just a server-side prefilter; the
+                // exact per-row client check below is what actually scopes results to this device.
+                var body = new { current = pageNumber, rowCount = PageSize, searchPhrase };
                 var response = await _http.PostAsJsonAsync("/api/unbound/overview/search_queries", body, cancellationToken);
                 response.EnsureSuccessStatusCode();
                 return await response.Content.ReadFromJsonAsync<OpnsenseSearchResult<OpnsenseUnboundQueryDto>>(cancellationToken);
@@ -38,7 +62,7 @@ public sealed class UnboundLogClient : IUnboundLogClient
             var reachedCutoff = false;
             foreach (var row in rows)
             {
-                if (!string.Equals(row.Client, clientIp, StringComparison.Ordinal)) continue;
+                if (!ClientMatching.Matches(row.Client, matchNames)) continue;
                 if (row.Domain is null) continue;
 
                 var time = DateTimeOffset.FromUnixTimeSeconds(row.Time);

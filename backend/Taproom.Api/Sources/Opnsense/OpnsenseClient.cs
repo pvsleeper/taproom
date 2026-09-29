@@ -43,6 +43,28 @@ public sealed class OpnsenseClient : IOpnsenseClient
         return result;
     }
 
+    public async Task<IReadOnlyList<NdpEntry>> GetNdpTableAsync(CancellationToken cancellationToken)
+    {
+        var rows = await _http.GetFromJsonAsync<List<OpnsenseNdpEntryDto>>(
+            "/api/diagnostics/interface/get_ndp", cancellationToken) ?? [];
+
+        var result = new List<NdpEntry>(rows.Count);
+        foreach (var row in rows)
+        {
+            var mac = MacAddress.Normalize(row.Mac);
+            if (mac is null || row.Ip is null) continue;
+            if (row.Expired) continue;
+            if (string.Equals(row.IntfDescription, "WAN", StringComparison.OrdinalIgnoreCase)) continue;
+            // Link-local addresses (fe80::/10) are never what a resolver logs as a client's identity —
+            // they're not globally meaningful, so skip them rather than waste a PTR lookup on one.
+            if (row.Ip.StartsWith("fe80:", StringComparison.OrdinalIgnoreCase)) continue;
+
+            result.Add(new NdpEntry { Mac = mac, Ipv6 = row.Ip });
+        }
+
+        return result;
+    }
+
     public async Task<IReadOnlyList<DhcpLease>> GetDhcpLeasesAsync(CancellationToken cancellationToken)
     {
         return _options.DhcpProvider switch

@@ -23,6 +23,26 @@ public sealed class OpnsenseArpEntryDto
     public bool Expired { get; set; }
 }
 
+/// <summary>
+/// One row from GET /api/diagnostics/interface/get_ndp. Field names mirror get_arp's shape (OPNsense's
+/// IPv4 neighbor table) since this is its IPv6 analog, but haven't been confirmed against a live
+/// response — the taproom API user didn't have this page's privilege yet when this was written.
+/// </summary>
+public sealed class OpnsenseNdpEntryDto
+{
+    [JsonPropertyName("mac")]
+    public string? Mac { get; set; }
+
+    [JsonPropertyName("ip")]
+    public string? Ip { get; set; }
+
+    [JsonPropertyName("intf_description")]
+    public string? IntfDescription { get; set; }
+
+    [JsonPropertyName("expired")]
+    public bool Expired { get; set; }
+}
+
 /// <summary>Common "rows" envelope used by OPNsense's search-grid endpoints.</summary>
 public sealed class OpnsenseSearchResult<T>
 {

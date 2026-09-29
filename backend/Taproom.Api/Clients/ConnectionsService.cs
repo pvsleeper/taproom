@@ -14,12 +14,14 @@ namespace Taproom.Api.Clients;
 public sealed class ConnectionsService
 {
     private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(3);
-    private static readonly TimeSpan DomainLookbackWindow = TimeSpan.FromMinutes(30);
+    // Wide enough that a long-lived connection still finds the DNS lookup that originally opened it.
+    private static readonly TimeSpan DomainLookbackWindow = TimeSpan.FromHours(24);
     private static readonly TimeSpan SourceTimeout = TimeSpan.FromSeconds(10);
 
     private readonly IStatesClient _states;
     private readonly IUnboundLogClient _unboundLog;
     private readonly DomainResolver _domainResolver;
+    private readonly ClientIdentityResolver _identityResolver;
     private readonly GeoIpService _geoIp;
     private readonly ClientSnapshotProvider _snapshotProvider;
     private readonly IMemoryCache _cache;
@@ -36,6 +38,7 @@ public sealed class ConnectionsService
         IStatesClient states,
         IUnboundLogClient unboundLog,
         DomainResolver domainResolver,
+        ClientIdentityResolver identityResolver,
         GeoIpService geoIp,
         ClientSnapshotProvider snapshotProvider,
         IMemoryCache cache,
@@ -45,6 +48,7 @@ public sealed class ConnectionsService
         _states = states;
         _unboundLog = unboundLog;
         _domainResolver = domainResolver;
+        _identityResolver = identityResolver;
         _geoIp = geoIp;
         _snapshotProvider = snapshotProvider;
         _cache = cache;
@@ -118,7 +122,8 @@ public sealed class ConnectionsService
         try
         {
             using var cts = new CancellationTokenSource(SourceTimeout);
-            recentQueries = await _unboundLog.GetQueriesForClientAsync(ip, DomainLookbackWindow, cts.Token);
+            var identity = await _identityResolver.ResolveAsync(mac, ip, cts.Token);
+            recentQueries = await _unboundLog.GetQueriesForClientAsync(identity, DomainLookbackWindow, cts.Token);
             _lastQueriesByIp[ip] = recentQueries;
         }
         catch (Exception ex)

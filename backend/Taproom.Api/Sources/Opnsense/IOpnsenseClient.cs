@@ -6,4 +6,5 @@ public interface IOpnsenseClient
 {
     Task<IReadOnlyList<ArpEntry>> GetArpTableAsync(CancellationToken cancellationToken);
     Task<IReadOnlyList<DhcpLease>> GetDhcpLeasesAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<NdpEntry>> GetNdpTableAsync(CancellationToken cancellationToken);
 }

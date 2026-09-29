@@ -37,3 +37,10 @@ public sealed record DhcpLease
     public bool IsStatic { get; init; }
     public required DateTimeOffset ObservedAt { get; init; }
 }
+
+/// <summary>Normalized view of one OPNsense NDP (IPv6 neighbor) table entry.</summary>
+public sealed record NdpEntry
+{
+    public required string Mac { get; init; }
+    public required string Ipv6 { get; init; }
+}
