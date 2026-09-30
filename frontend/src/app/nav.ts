@@ -1,4 +1,4 @@
-import { LayoutGrid, type LucideIcon } from 'lucide-react'
+import { LayoutDashboard, Users, type LucideIcon } from 'lucide-react'
 
 export interface NavItem {
   label: string
@@ -7,5 +7,6 @@ export interface NavItem {
 }
 
 export const navItems: NavItem[] = [
-  { label: 'Overview', path: '/', icon: LayoutGrid },
+  { label: 'Dashboard', path: '/', icon: LayoutDashboard },
+  { label: 'Clients', path: '/clients', icon: Users },
 ]

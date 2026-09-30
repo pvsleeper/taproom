@@ -17,7 +17,7 @@ export function PageHeader({ snapshot }: PageHeaderProps) {
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
-      <h1 className="text-xl font-semibold">Overview</h1>
+      <h1 className="text-xl font-semibold">Clients</h1>
       <div className="flex items-center gap-3">
         {snapshot && (
           <span className="text-xs text-text-muted">Updated {formatRelativeSeconds(snapshot.generatedAt)}</span>

@@ -1,19 +1,24 @@
 import { ArrowLeft, Cable, CircleHelp, Wifi } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import type { NetworkClient } from '../../api/types'
-import { SignalBars } from '../Overview/SignalBars'
+import { SignalBars } from '../Clients/SignalBars'
 
 interface DetailHeaderProps {
   client: NetworkClient
 }
 
 export function DetailHeader({ client }: DetailHeaderProps) {
+  const navigate = useNavigate()
+
   return (
     <div className="border-b border-border px-6 py-4">
-      <Link to="/" className="mb-3 inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-text">
+      <button
+        onClick={() => navigate(-1)}
+        className="mb-3 inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-text"
+      >
         <ArrowLeft size={14} />
-        Back to Overview
-      </Link>
+        Back to Clients
+      </button>
 
       <div className="flex flex-wrap items-center gap-4">
         <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${client.online ? 'bg-online' : 'bg-offline'}`} />

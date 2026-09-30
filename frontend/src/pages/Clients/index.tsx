@@ -9,7 +9,7 @@ import { SkeletonRows } from './SkeletonRows'
 import { SummaryCards } from './SummaryCards'
 import { Toolbar, type ClientFilter } from './Toolbar'
 
-export function OverviewPage() {
+export function ClientsPage() {
   const { data, isPending, isError, error } = useClientSnapshot()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<ClientFilter>('all')
