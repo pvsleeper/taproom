@@ -1,6 +1,11 @@
 services:
   taproom:
-    build: .
+    build:
+      # Docker clones this itself as the build context — no local checkout
+      # needed on the host. Repo is public, so no GITHUB_TOKEN is needed in
+      # the URL. `#main` pins the branch; `docker compose build` re-clones
+      # and rebuilds from whatever main points to at the time.
+      context: https://github.com/pvsleeper/taproom.git#main
     image: taproom:latest
     container_name: taproom
     restart: unless-stopped
