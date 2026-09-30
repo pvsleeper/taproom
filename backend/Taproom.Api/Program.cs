@@ -25,6 +25,9 @@ builder.Services.AddSingleton<DnsPanelService>();
 builder.Services.AddSingleton<InterfaceSampler>();
 builder.Services.AddSingleton<BandwidthService>();
 builder.Services.AddSingleton<ConnectionRateTracker>();
+builder.Services.AddSingleton<WanRateSampler>();
+builder.Services.AddSingleton<NetworkDnsSampler>();
+builder.Services.AddSingleton<DashboardService>();
 
 builder.Services.AddHttpClient<IOmadaClient, OmadaClient>((sp, http) =>
 {
@@ -71,6 +74,7 @@ ConfigureOpnsenseClient(builder.Services.AddHttpClient<IOpnsenseClient, Opnsense
 ConfigureOpnsenseClient(builder.Services.AddHttpClient<IStatesClient, StatesClient>());
 ConfigureOpnsenseClient(builder.Services.AddHttpClient<IUnboundLogClient, UnboundLogClient>());
 ConfigureOpnsenseClient(builder.Services.AddHttpClient<ITopTalkersClient, TopTalkersClient>());
+ConfigureOpnsenseClient(builder.Services.AddHttpClient<IInterfaceCounterClient, InterfaceCounterClient>());
 
 var app = builder.Build();
 
@@ -106,6 +110,18 @@ app.MapGet("/api/clients/{mac}/bandwidth", async (string mac, BandwidthService s
     var result = await service.GetBandwidthAsync(mac, ct);
     return result is null ? Results.NotFound() : Results.Ok(result);
 });
+
+app.MapGet("/api/dashboard/summary", async (DashboardService service, CancellationToken ct) =>
+    Results.Ok(await service.GetSummaryAsync(ct)));
+
+app.MapGet("/api/dashboard/wan", async (DashboardService service, CancellationToken ct) =>
+    Results.Ok(await service.GetWanAsync(ct)));
+
+app.MapGet("/api/dashboard/connections", async (DashboardService service, CancellationToken ct) =>
+    Results.Ok(await service.GetConnectionsAsync(ct)));
+
+app.MapGet("/api/dashboard/top-talkers", async (int? limit, DashboardService service, CancellationToken ct) =>
+    Results.Ok(await service.GetTopTalkersAsync(limit ?? 5, ct)));
 
 app.MapFallbackToFile("index.html");
 

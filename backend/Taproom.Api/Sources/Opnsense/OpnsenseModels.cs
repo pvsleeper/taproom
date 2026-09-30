@@ -5,6 +5,28 @@ namespace Taproom.Api.Sources.Opnsense;
 // Confirmed against a live router (OPNsense, dnsmasq DHCP backend) — see docs/Taproom — Phase 1 Spec.md.
 
 /// <summary>
+/// GET /api/diagnostics/traffic/interface returns { "interfaces": { "&lt;name&gt;": {...} } } with
+/// cumulative, ever-increasing byte counters as strings (not a rate — the caller computes deltas).
+/// Confirmed against a live router with a real download: on the WAN interface, "bytes received" is the
+/// house's download and "bytes transmitted" is its upload (opposite of phase 4's per-address LAN mapping,
+/// as the phase 5 spec warned).
+/// </summary>
+public sealed class OpnsenseInterfaceTrafficResult
+{
+    [JsonPropertyName("interfaces")]
+    public Dictionary<string, OpnsenseInterfaceCountersDto> Interfaces { get; set; } = new();
+}
+
+public sealed class OpnsenseInterfaceCountersDto
+{
+    [JsonPropertyName("bytes received")]
+    public string? BytesReceived { get; set; }
+
+    [JsonPropertyName("bytes transmitted")]
+    public string? BytesTransmitted { get; set; }
+}
+
+/// <summary>
 /// GET /api/diagnostics/traffic/top/{interface} returns { "&lt;interface&gt;": { "records": [...] } }.
 /// Confirmed against a live router: rate_bits_in/out are already instantaneous bits-per-second (not a
 /// cumulative count over the sample), and — counter to the phase 4 spec's assumption — "in" is a live

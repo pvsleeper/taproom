@@ -51,4 +51,6 @@ public sealed class OpnsenseOptions
     public string DnsServer { get; set; } = "";
     /// <summary>Logical interface name for the top-talkers bandwidth sample, e.g. "lan".</summary>
     public string LanInterface { get; set; } = "lan";
+    /// <summary>Logical interface name for the WAN bandwidth counters, e.g. "wan".</summary>
+    public string WanInterface { get; set; } = "wan";
 }

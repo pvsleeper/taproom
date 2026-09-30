@@ -8,6 +8,11 @@ public sealed class UnboundLogClient : IUnboundLogClient
     private const int PageSize = 1000;
     private const int MaxPages = 10;
 
+    // Unfiltered (searchPhrase="") pages hit the same OPNsense chunked-response corruption bug the
+    // firewall states endpoint did at ~150KB — a query-log row is small, but a genuinely small page size
+    // keeps this well clear of that threshold rather than re-discovering it live.
+    private const int UnfilteredPageSize = 200;
+
     private readonly HttpClient _http;
 
     public UnboundLogClient(HttpClient http)
@@ -85,6 +90,61 @@ public sealed class UnboundLogClient : IUnboundLogClient
             }
 
             if (reachedCutoff || rows.Count < PageSize) break;
+        }
+
+        return entries;
+    }
+
+    public async Task<IReadOnlyList<DnsQueryEntry>> GetAllQueriesAsync(TimeSpan window, int maxRows, CancellationToken cancellationToken)
+    {
+        var cutoff = DateTimeOffset.UtcNow - window;
+        var entries = new List<DnsQueryEntry>();
+        var maxPages = (int)Math.Ceiling(maxRows / (double)UnfilteredPageSize);
+
+        // Rows come back newest-first, so we can stop paging as soon as a page's rows fall before the cutoff.
+        for (var page = 1; page <= maxPages; page++)
+        {
+            var pageNumber = page;
+            var result = await TransientHttpRetry.RunAsync(async () =>
+            {
+                var body = new { current = pageNumber, rowCount = UnfilteredPageSize, searchPhrase = "" };
+                var response = await _http.PostAsJsonAsync("/api/unbound/overview/search_queries", body, cancellationToken);
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadFromJsonAsync<OpnsenseSearchResult<OpnsenseUnboundQueryDto>>(cancellationToken);
+            }, cancellationToken);
+            var rows = result?.Rows ?? [];
+            if (rows.Count == 0) break;
+
+            var reachedCutoff = false;
+            foreach (var row in rows)
+            {
+                if (row.Domain is null) continue;
+
+                var time = DateTimeOffset.FromUnixTimeSeconds(row.Time);
+                if (time < cutoff)
+                {
+                    reachedCutoff = true;
+                    break;
+                }
+
+                entries.Add(new DnsQueryEntry
+                {
+                    Time = time,
+                    Domain = row.Domain.TrimEnd('.'),
+                    Type = row.Type ?? "",
+                    Blocked = DnsQueryClassifier.IsBlocked(row.Action, row.Blocklist),
+                    Failed = DnsQueryClassifier.IsFailed(row.Action, row.Blocklist, row.Rcode),
+                    Blocklist = string.IsNullOrEmpty(row.Blocklist) ? null : row.Blocklist,
+                    Rcode = row.Rcode ?? "",
+                });
+
+                if (entries.Count >= maxRows)
+                {
+                    return entries;
+                }
+            }
+
+            if (reachedCutoff || rows.Count < UnfilteredPageSize) break;
         }
 
         return entries;

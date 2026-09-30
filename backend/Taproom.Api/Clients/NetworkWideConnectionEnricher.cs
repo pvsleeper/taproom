@@ -1,47 +1,31 @@
 namespace Taproom.Api.Clients;
 
-public sealed record EnrichmentOutcome
-{
-    public required IReadOnlyList<EnrichedConnection> Connections { get; init; }
-    public required IReadOnlyList<ConnectionMarker> Markers { get; init; }
-    public required IReadOnlyList<LocalConnection> Local { get; init; }
-    public required IReadOnlyList<EnrichedConnection> UnknownLocation { get; init; }
-    public required IReadOnlyList<string> Hints { get; init; }
-}
-
 /// <summary>
-/// Pure function that turns raw firewall states into named, located, grouped connections. All the
-/// actual I/O (DNS resolution, PTR lookups, GeoIP) happens before this is called; it only combines
-/// already-resolved lookups, so it's fully unit-testable with fixtures.
+/// Dashboard variant of <see cref="ConnectionEnricher"/>: groups by (device, remote ip, remote port) instead
+/// of just (remote ip, port), so two devices talking to the same remote endpoint stay distinct connections
+/// each attributed to its own device, and markers carry a per-device breakdown for the map's coloring/legend.
+/// Reuses ConnectionEnricher's own naming fallback so the two views never disagree on what a remote IP is called.
 /// </summary>
-public static class ConnectionEnricher
+public static class NetworkWideConnectionEnricher
 {
     public static EnrichmentOutcome Enrich(
         IReadOnlyList<FirewallState> states,
         IReadOnlyDictionary<string, List<string>> dnsNamesByIp,
         IReadOnlyDictionary<string, string?> ptrNamesByIp,
         IReadOnlyDictionary<string, GeoInfo> geoByIp,
-        IReadOnlyDictionary<string, string> localNamesByIp,
-        int dnsQueryCountInWindow)
+        IReadOnlyDictionary<string, AttributedDevice> addressMap)
     {
-        var local = new List<LocalConnection>();
-        var publicGroups = new Dictionary<(string Ip, int Port), List<FirewallState>>();
+        var publicGroups = new Dictionary<(string Mac, string Ip, int Port), List<FirewallState>>();
 
         foreach (var state in states)
         {
-            if (PrivateIp.IsPrivateOrLinkLocal(state.RemoteIp))
+            if (state.SrcAddr is null || PrivateIp.IsPrivateOrLinkLocal(state.RemoteIp))
             {
-                local.Add(new LocalConnection
-                {
-                    RemoteIp = state.RemoteIp,
-                    RemotePort = state.RemotePort,
-                    Protocol = state.Protocol,
-                    Name = localNamesByIp.GetValueOrDefault(state.RemoteIp, state.RemoteIp),
-                });
                 continue;
             }
 
-            var key = (state.RemoteIp, state.RemotePort);
+            var device = DeviceAttributor.Attribute(addressMap, state.SrcAddr);
+            var key = (device.Mac, state.RemoteIp, state.RemotePort);
             if (!publicGroups.TryGetValue(key, out var group))
             {
                 group = [];
@@ -53,9 +37,10 @@ public static class ConnectionEnricher
         var connections = new List<EnrichedConnection>();
         var unknownLocation = new List<EnrichedConnection>();
 
-        foreach (var ((ip, port), group) in publicGroups)
+        foreach (var ((mac, ip, port), group) in publicGroups)
         {
-            var (name, nameSource, otherNames) = ResolveName(ip, dnsNamesByIp, ptrNamesByIp, geoByIp);
+            var device = DeviceAttributor.Attribute(addressMap, group[0].SrcAddr!);
+            var (name, nameSource, otherNames) = ConnectionEnricher.ResolveName(ip, dnsNamesByIp, ptrNamesByIp, geoByIp);
             geoByIp.TryGetValue(ip, out var geo);
 
             var downBytes = group.Sum(s => s.DownBytes);
@@ -81,6 +66,8 @@ public static class ConnectionEnricher
                 State = group[0].State,
                 DownBytes = downBytes,
                 UpBytes = upBytes,
+                Mac = device.Mac,
+                DeviceName = device.Name,
             };
 
             if (connection.Lat is not null && connection.Lon is not null)
@@ -94,56 +81,23 @@ public static class ConnectionEnricher
         }
 
         var markers = BuildMarkers(connections);
-        var hints = new List<string>();
-        if (connections.Count >= 3 && connections.All(c => c.NameSource != NameSource.Dns) && dnsQueryCountInWindow == 0)
-        {
-            hints.Add("possibleOwnDns");
-        }
 
         return new EnrichmentOutcome
         {
             Connections = connections,
             Markers = markers,
-            Local = local,
+            Local = [],
             UnknownLocation = unknownLocation,
-            Hints = hints,
+            Hints = [],
         };
     }
-
-    /// <summary>Rung-1..4 naming fallback (DNS → PTR → ASN org → raw IP), shared with the dashboard's network-wide enrichment.</summary>
-    public static (string Name, NameSource Source, IReadOnlyList<string> OtherNames) ResolveName(
-        string ip,
-        IReadOnlyDictionary<string, List<string>> dnsNamesByIp,
-        IReadOnlyDictionary<string, string?> ptrNamesByIp,
-        IReadOnlyDictionary<string, GeoInfo> geoByIp)
-    {
-        if (dnsNamesByIp.TryGetValue(ip, out var domains) && domains.Count > 0)
-        {
-            return (domains[0], NameSource.Dns, domains.Skip(1).ToList());
-        }
-
-        if (ptrNamesByIp.TryGetValue(ip, out var ptr) && !string.IsNullOrEmpty(ptr))
-        {
-            return (ptr, NameSource.Ptr, []);
-        }
-
-        if (geoByIp.TryGetValue(ip, out var geo) && !string.IsNullOrEmpty(geo.Org))
-        {
-            return (geo.Org, NameSource.Asn, []);
-        }
-
-        return (ip, NameSource.Ip, []);
-    }
-
-    /// <summary>City-level grouping key (~11km): round to 1 decimal degree, matching the spec's own example key.</summary>
-    public static string MarkerKeyFor(double lat, double lon) => $"{Math.Round(lat, 1)},{Math.Round(lon, 1)}";
 
     private static IReadOnlyList<ConnectionMarker> BuildMarkers(IReadOnlyList<EnrichedConnection> connections)
     {
         var groups = new Dictionary<string, List<EnrichedConnection>>();
         foreach (var c in connections)
         {
-            var key = MarkerKeyFor(c.Lat!.Value, c.Lon!.Value);
+            var key = ConnectionEnricher.MarkerKeyFor(c.Lat!.Value, c.Lon!.Value);
             if (!groups.TryGetValue(key, out var list))
             {
                 list = [];
@@ -160,6 +114,18 @@ public static class ConnectionEnricher
                 ? (first.Country ?? "Unknown")
                 : $"{first.City}, {first.Country}";
 
+            var devices = members
+                .GroupBy(m => (m.Mac!, m.DeviceName!))
+                .Select(g => new MarkerDeviceBreakdown
+                {
+                    Mac = g.Key.Item1,
+                    Name = g.Key.Item2,
+                    ConnectionCount = g.Count(),
+                    DownBps = g.Sum(m => m.DownBps ?? 0),
+                    UpBps = g.Sum(m => m.UpBps ?? 0),
+                })
+                .ToList();
+
             return new ConnectionMarker
             {
                 Key = kvp.Key,
@@ -168,6 +134,7 @@ public static class ConnectionEnricher
                 Label = label,
                 ConnectionCount = members.Count,
                 Bytes = members.Sum(m => m.Bytes),
+                Devices = devices,
             };
         }).ToList();
     }

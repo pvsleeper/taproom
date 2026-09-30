@@ -9,6 +9,8 @@ namespace Taproom.Api.Clients;
 /// </summary>
 public sealed record FirewallState
 {
+    /// <summary>The LAN client's own address. Only populated by the network-wide fetch (phase 5), for device attribution.</summary>
+    public string? SrcAddr { get; init; }
     public required string Protocol { get; init; }
     public required string RemoteIp { get; init; }
     public required int RemotePort { get; init; }
@@ -82,11 +84,25 @@ public sealed record EnrichedConnection
     public long? DownBps { get; init; }
     public long? UpBps { get; init; }
 
+    /// <summary>Only populated on the dashboard's network-wide connection list, for device coloring/filtering.</summary>
+    public string? Mac { get; init; }
+    public string? DeviceName { get; init; }
+
     /// <summary>Grouped byte totals per direction, used to compute the rate above — not part of the public API shape.</summary>
     [JsonIgnore]
     public long DownBytes { get; init; }
     [JsonIgnore]
     public long UpBytes { get; init; }
+}
+
+/// <summary>One device's contribution to a dashboard connection marker.</summary>
+public sealed record MarkerDeviceBreakdown
+{
+    public required string Mac { get; init; }
+    public required string Name { get; init; }
+    public required int ConnectionCount { get; init; }
+    public required long DownBps { get; init; }
+    public required long UpBps { get; init; }
 }
 
 public sealed record ConnectionMarker
@@ -99,6 +115,9 @@ public sealed record ConnectionMarker
     public required long Bytes { get; init; }
     public long DownBps { get; init; }
     public long UpBps { get; init; }
+
+    /// <summary>Only populated on the dashboard's network-wide markers.</summary>
+    public IReadOnlyList<MarkerDeviceBreakdown> Devices { get; init; } = [];
 }
 
 public sealed record LocalConnection
