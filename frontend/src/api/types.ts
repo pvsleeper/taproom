@@ -52,6 +52,17 @@ export interface EnrichedConnection {
   state: string
   downBps: number | null
   upBps: number | null
+  /** Only populated on the dashboard's network-wide connection list. */
+  mac: string | null
+  deviceName: string | null
+}
+
+export interface MarkerDeviceBreakdown {
+  mac: string
+  name: string
+  connectionCount: number
+  downBps: number
+  upBps: number
 }
 
 export interface ConnectionMarker {
@@ -63,6 +74,8 @@ export interface ConnectionMarker {
   bytes: number
   downBps: number
   upBps: number
+  /** Only populated on the dashboard's network-wide markers. */
+  devices: MarkerDeviceBreakdown[]
 }
 
 export interface LocalConnection {
@@ -127,4 +140,51 @@ export interface BandwidthResult {
   upBps: number
   addresses: string[]
   source: SourceStatus
+}
+
+export interface ClientCounts {
+  online: number
+  wireless: number
+  wired: number
+}
+
+export interface DashboardDnsSummary {
+  queries: number
+  blocked: number
+  failed: number
+}
+
+export interface DashboardSummaryResult {
+  generatedAt: string
+  clients: ClientCounts
+  dns: DashboardDnsSummary
+  sources: Record<string, SourceStatus>
+}
+
+export interface DashboardWanResult {
+  sampledAt: string
+  downBps: number
+  upBps: number
+  ok: boolean
+}
+
+export interface DashboardConnectionsResult {
+  generatedAt: string
+  home: HomeLocation
+  connections: EnrichedConnection[]
+  markers: ConnectionMarker[]
+  sources: Record<string, SourceStatus>
+}
+
+export interface DeviceRate {
+  mac: string
+  name: string
+  downBps: number
+  upBps: number
+}
+
+export interface TopTalkersResult {
+  sampledAt: string
+  devices: DeviceRate[]
+  ok: boolean
 }

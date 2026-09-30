@@ -1,4 +1,14 @@
-import type { BandwidthResult, ClientSnapshot, ConnectionsResult, DnsResult, NetworkClient } from './types'
+import type {
+  BandwidthResult,
+  ClientSnapshot,
+  ConnectionsResult,
+  DashboardConnectionsResult,
+  DashboardSummaryResult,
+  DashboardWanResult,
+  DnsResult,
+  NetworkClient,
+  TopTalkersResult,
+} from './types'
 
 export class ClientsNotReadyError extends Error {
   constructor() {
@@ -65,4 +75,36 @@ export async function fetchBandwidth(mac: string): Promise<BandwidthResult> {
     throw new Error(`Failed to load bandwidth: ${response.status}`)
   }
   return (await response.json()) as BandwidthResult
+}
+
+export async function fetchDashboardSummary(): Promise<DashboardSummaryResult> {
+  const response = await fetch('/api/dashboard/summary')
+  if (!response.ok) {
+    throw new Error(`Failed to load dashboard summary: ${response.status}`)
+  }
+  return (await response.json()) as DashboardSummaryResult
+}
+
+export async function fetchDashboardWan(): Promise<DashboardWanResult> {
+  const response = await fetch('/api/dashboard/wan')
+  if (!response.ok) {
+    throw new Error(`Failed to load WAN rate: ${response.status}`)
+  }
+  return (await response.json()) as DashboardWanResult
+}
+
+export async function fetchDashboardConnections(): Promise<DashboardConnectionsResult> {
+  const response = await fetch('/api/dashboard/connections')
+  if (!response.ok) {
+    throw new Error(`Failed to load dashboard connections: ${response.status}`)
+  }
+  return (await response.json()) as DashboardConnectionsResult
+}
+
+export async function fetchDashboardTopTalkers(limit: number): Promise<TopTalkersResult> {
+  const response = await fetch(`/api/dashboard/top-talkers?limit=${limit}`)
+  if (!response.ok) {
+    throw new Error(`Failed to load top talkers: ${response.status}`)
+  }
+  return (await response.json()) as TopTalkersResult
 }
