@@ -223,3 +223,29 @@ public sealed class OpnsenseUnboundQueryDto
     [JsonPropertyName("rcode")]
     public string? Rcode { get; set; }
 }
+
+/// <summary>GET /api/unbound/diagnostics/dumpcache — { "status": "...", "data": [ rows ] }, ~17k rows on a busy network.</summary>
+public sealed class OpnsenseUnboundCacheDump
+{
+    [JsonPropertyName("data")]
+    public List<OpnsenseUnboundCacheRowDto> Data { get; set; } = [];
+}
+
+public sealed class OpnsenseUnboundCacheRowDto
+{
+    /// <summary>Owner name with trailing dot, e.g. "www.example.com.".</summary>
+    [JsonPropertyName("host")]
+    public string? Host { get; set; }
+
+    /// <summary>Remaining TTL in seconds, as a JSON string.</summary>
+    [JsonPropertyName("ttl")]
+    public string? Ttl { get; set; }
+
+    /// <summary>A, AAAA, CNAME, NS, SOA, PTR, HTTPS, ... — only A/AAAA/CNAME are used.</summary>
+    [JsonPropertyName("rrtype")]
+    public string? RrType { get; set; }
+
+    /// <summary>An address for A/AAAA, a trailing-dot target name for CNAME.</summary>
+    [JsonPropertyName("value")]
+    public string? Value { get; set; }
+}

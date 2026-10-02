@@ -21,11 +21,11 @@ public sealed record ClientMatchSet
 /// </summary>
 public sealed class ClientIdentityResolver
 {
-    private readonly DomainResolver _domainResolver;
+    private readonly PtrResolver _ptrResolver;
 
-    public ClientIdentityResolver(DomainResolver domainResolver)
+    public ClientIdentityResolver(PtrResolver ptrResolver)
     {
-        _domainResolver = domainResolver;
+        _ptrResolver = ptrResolver;
     }
 
     public async Task<ClientMatchSet> ResolveAsync(string ipv4, IReadOnlyList<string> addresses, CancellationToken cancellationToken)
@@ -33,7 +33,7 @@ public sealed class ClientIdentityResolver
         var names = new HashSet<string>();
         var searchPhrases = new List<string>();
 
-        var ptrResults = await Task.WhenAll(addresses.Select(async addr => (addr, ptr: await _domainResolver.ResolveClientNameAsync(addr, cancellationToken))));
+        var ptrResults = await Task.WhenAll(addresses.Select(async addr => (addr, ptr: await _ptrResolver.ResolveClientNameAsync(addr, cancellationToken))));
 
         foreach (var addr in addresses)
         {

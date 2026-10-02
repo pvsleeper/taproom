@@ -21,7 +21,8 @@ public sealed class ConnectionsService
     private readonly IStatesClient _states;
     private readonly IUnboundLogClient _unboundLog;
     private readonly IOpnsenseClient _opnsense;
-    private readonly DomainResolver _domainResolver;
+    private readonly PtrResolver _ptrResolver;
+    private readonly DnsCacheMapProvider _dnsCache;
     private readonly ClientIdentityResolver _identityResolver;
     private readonly ConnectionRateTracker _rateTracker;
     private readonly GeoIpService _geoIp;
@@ -40,7 +41,8 @@ public sealed class ConnectionsService
         IStatesClient states,
         IUnboundLogClient unboundLog,
         IOpnsenseClient opnsense,
-        DomainResolver domainResolver,
+        PtrResolver ptrResolver,
+        DnsCacheMapProvider dnsCache,
         ClientIdentityResolver identityResolver,
         ConnectionRateTracker rateTracker,
         GeoIpService geoIp,
@@ -52,7 +54,8 @@ public sealed class ConnectionsService
         _states = states;
         _unboundLog = unboundLog;
         _opnsense = opnsense;
-        _domainResolver = domainResolver;
+        _ptrResolver = ptrResolver;
+        _dnsCache = dnsCache;
         _identityResolver = identityResolver;
         _rateTracker = rateTracker;
         _geoIp = geoIp;
@@ -149,18 +152,20 @@ public sealed class ConnectionsService
             .Select(g => g.Domain)
             .ToList();
 
-        // Resolve from whatever domains we have, even stale ones from a failed fetch — better than nothing.
-        var dnsNamesByIp = await _domainResolver.ResolveDomainsAsync(recentDomains, cancellationToken);
-
         var publicRemoteIps = states
             .Select(s => s.RemoteIp)
             .Distinct()
             .Where(remoteIp => !PrivateIp.IsPrivateOrLinkLocal(remoteIp))
             .ToList();
 
+        // Names come from Unbound's own cache (no lookups of ours); this client's recent queries only pick
+        // between candidates when several names share an address.
+        var (cacheMap, cacheOk) = await _dnsCache.GetMapAsync(cancellationToken);
+        var dnsNamesByIp = DnsNaming.ChooseNames(cacheMap, publicRemoteIps, recentDomains);
+
         // Independent per-IP lookups (each usually a cache hit after the first pass), run concurrently.
         var needsPtr = publicRemoteIps.Where(remoteIp => !dnsNamesByIp.ContainsKey(remoteIp)).ToList();
-        var ptrResults = await Task.WhenAll(needsPtr.Select(async ip => (ip, ptr: await _domainResolver.ReversePtrAsync(ip, cancellationToken))));
+        var ptrResults = await Task.WhenAll(needsPtr.Select(async ip => (ip, ptr: await _ptrResolver.ReversePtrAsync(ip, cancellationToken))));
         var ptrNamesByIp = ptrResults.ToDictionary(r => r.ip, r => r.ptr);
 
         var geoByIp = new Dictionary<string, GeoInfo>();
@@ -217,6 +222,7 @@ public sealed class ConnectionsService
             {
                 ["states"] = new() { Ok = statesOk, Error = statesError },
                 ["dns"] = new() { Ok = dnsOk, Error = dnsError },
+                ["dnscache"] = new() { Ok = cacheOk },
                 ["geoip"] = new() { Ok = _geoIp.Available },
             },
         };

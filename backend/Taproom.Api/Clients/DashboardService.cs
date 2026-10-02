@@ -18,7 +18,8 @@ public sealed class DashboardService
 
     private readonly IStatesClient _states;
     private readonly IOpnsenseClient _opnsense;
-    private readonly DomainResolver _domainResolver;
+    private readonly PtrResolver _ptrResolver;
+    private readonly DnsCacheMapProvider _dnsCache;
     private readonly GeoIpService _geoIp;
     private readonly ClientSnapshotProvider _snapshotProvider;
     private readonly InterfaceSampler _interfaceSampler;
@@ -34,7 +35,8 @@ public sealed class DashboardService
     public DashboardService(
         IStatesClient states,
         IOpnsenseClient opnsense,
-        DomainResolver domainResolver,
+        PtrResolver ptrResolver,
+        DnsCacheMapProvider dnsCache,
         GeoIpService geoIp,
         ClientSnapshotProvider snapshotProvider,
         InterfaceSampler interfaceSampler,
@@ -47,7 +49,8 @@ public sealed class DashboardService
     {
         _states = states;
         _opnsense = opnsense;
-        _domainResolver = domainResolver;
+        _ptrResolver = ptrResolver;
+        _dnsCache = dnsCache;
         _geoIp = geoIp;
         _snapshotProvider = snapshotProvider;
         _interfaceSampler = interfaceSampler;
@@ -132,7 +135,6 @@ public sealed class DashboardService
 
         var (dnsEntries, dnsOk) = await _dnsSampler.GetSampleAsync(cancellationToken);
         var domains = NetworkDnsNaming.ExtractDomainsMostRecentFirst(dnsEntries);
-        var dnsNamesByIp = await _domainResolver.ResolveDomainsAsync(domains, cancellationToken);
 
         var publicRemoteIps = states
             .Select(s => s.RemoteIp)
@@ -140,8 +142,11 @@ public sealed class DashboardService
             .Where(remoteIp => !PrivateIp.IsPrivateOrLinkLocal(remoteIp))
             .ToList();
 
+        var (cacheMap, cacheOk) = await _dnsCache.GetMapAsync(cancellationToken);
+        var dnsNamesByIp = DnsNaming.ChooseNames(cacheMap, publicRemoteIps, domains);
+
         var needsPtr = publicRemoteIps.Where(remoteIp => !dnsNamesByIp.ContainsKey(remoteIp)).ToList();
-        var ptrResults = await Task.WhenAll(needsPtr.Select(async ip => (ip, ptr: await _domainResolver.ReversePtrAsync(ip, cancellationToken))));
+        var ptrResults = await Task.WhenAll(needsPtr.Select(async ip => (ip, ptr: await _ptrResolver.ReversePtrAsync(ip, cancellationToken))));
         var ptrNamesByIp = ptrResults.ToDictionary(r => r.ip, r => r.ptr);
 
         var geoByIp = new Dictionary<string, GeoInfo>();
@@ -205,6 +210,7 @@ public sealed class DashboardService
             {
                 ["states"] = new() { Ok = statesOk, Error = statesError },
                 ["dns"] = new() { Ok = dnsOk },
+                ["dnscache"] = new() { Ok = cacheOk },
                 ["geoip"] = new() { Ok = _geoIp.Available },
             },
         };

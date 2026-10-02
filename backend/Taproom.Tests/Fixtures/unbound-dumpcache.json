@@ -1,0 +1,117 @@
+{
+  "status": "ok",
+  "data": [
+    {
+      "host": "www.example.com.",
+      "ttl": "300",
+      "type": "IN",
+      "rrtype": "CNAME",
+      "value": "edge.example-cdn.net."
+    },
+    {
+      "host": "shop.example.org.",
+      "ttl": "300",
+      "type": "IN",
+      "rrtype": "CNAME",
+      "value": "edge.example-cdn.net."
+    },
+    {
+      "host": "edge.example-cdn.net.",
+      "ttl": "100",
+      "type": "IN",
+      "rrtype": "A",
+      "value": "203.0.113.10"
+    },
+    {
+      "host": "edge.example-cdn.net.",
+      "ttl": "100",
+      "type": "IN",
+      "rrtype": "AAAA",
+      "value": "2001:0db8:0000:0000:0000:0000:0000:0010"
+    },
+    {
+      "host": "direct.example.net.",
+      "ttl": "250",
+      "type": "IN",
+      "rrtype": "A",
+      "value": "198.51.100.7"
+    },
+    {
+      "host": "a.example.com.",
+      "ttl": "300",
+      "type": "IN",
+      "rrtype": "CNAME",
+      "value": "b.example.com."
+    },
+    {
+      "host": "b.example.com.",
+      "ttl": "300",
+      "type": "IN",
+      "rrtype": "CNAME",
+      "value": "c.example-cdn.net."
+    },
+    {
+      "host": "c.example-cdn.net.",
+      "ttl": "60",
+      "type": "IN",
+      "rrtype": "A",
+      "value": "192.0.2.5"
+    },
+    {
+      "host": "old.example.com.",
+      "ttl": "0",
+      "type": "IN",
+      "rrtype": "A",
+      "value": "192.0.2.99"
+    },
+    {
+      "host": "Mixed.Example.COM.",
+      "ttl": "90",
+      "type": "IN",
+      "rrtype": "A",
+      "value": "192.0.2.77"
+    },
+    {
+      "host": "loop1.example.com.",
+      "ttl": "300",
+      "type": "IN",
+      "rrtype": "CNAME",
+      "value": "loop2.example.com."
+    },
+    {
+      "host": "loop2.example.com.",
+      "ttl": "300",
+      "type": "IN",
+      "rrtype": "CNAME",
+      "value": "loop1.example.com."
+    },
+    {
+      "host": "loop2.example.com.",
+      "ttl": "300",
+      "type": "IN",
+      "rrtype": "A",
+      "value": "192.0.2.88"
+    },
+    {
+      "host": "example.com.",
+      "ttl": "3600",
+      "type": "IN",
+      "rrtype": "NS",
+      "value": "ns1.example.com."
+    },
+    {
+      "host": "example.com.",
+      "ttl": "3600",
+      "type": "IN",
+      "rrtype": "RRSIG",
+      "value": "ignored"
+    },
+    {
+      "host": "ns1.example.com.",
+      "ttl": "3600",
+      "type": "IN",
+      "rrtype": "A",
+      "value": "192.0.2.53"
+    }
+  ]
+}

@@ -18,7 +18,8 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddSingleton<ClientSnapshotProvider>();
 builder.Services.AddSingleton<GeoIpService>();
 builder.Services.AddMemoryCache();
-builder.Services.AddSingleton<DomainResolver>();
+builder.Services.AddSingleton<PtrResolver>();
+builder.Services.AddSingleton<DnsCacheMapProvider>();
 builder.Services.AddSingleton<ClientIdentityResolver>();
 builder.Services.AddSingleton<ConnectionsService>();
 builder.Services.AddSingleton<DnsPanelService>();
@@ -57,6 +58,11 @@ void ConfigureOpnsenseClient(IHttpClientBuilder clientBuilder)
         // connection (curl against the same endpoint never reproduces this; a fresh .NET HttpClient
         // connection does, repeatably, for larger responses) — force a new connection per request.
         http.DefaultRequestHeaders.ConnectionClose = true;
+        // Larger responses (Unbound query log pages, the cache dump) arrive corrupted over HTTP/1.x
+        // regardless of client — confirmed with a raw TLS socket — but intact over HTTP/2. Falls back
+        // to HTTP/1.1 only if the router doesn't offer h2.
+        http.DefaultRequestVersion = System.Net.HttpVersion.Version20;
+        http.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
     })
     .ConfigurePrimaryHttpMessageHandler(sp =>
     {
@@ -75,6 +81,7 @@ ConfigureOpnsenseClient(builder.Services.AddHttpClient<IStatesClient, StatesClie
 ConfigureOpnsenseClient(builder.Services.AddHttpClient<IUnboundLogClient, UnboundLogClient>());
 ConfigureOpnsenseClient(builder.Services.AddHttpClient<ITopTalkersClient, TopTalkersClient>());
 ConfigureOpnsenseClient(builder.Services.AddHttpClient<IInterfaceCounterClient, InterfaceCounterClient>());
+ConfigureOpnsenseClient(builder.Services.AddHttpClient<IUnboundCacheClient, UnboundCacheClient>());
 
 var app = builder.Build();
 

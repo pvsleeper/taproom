@@ -40,15 +40,16 @@ public class NetworkDnsNamingTests
     [Fact]
     public void One_devices_lookup_names_another_devices_connection()
     {
-        // Device A (10.0.1.10) looked up streaming.example.com, which resolves to 5.5.5.5.
+        // Unbound's cache holds streaming.example.com → 5.5.5.5 (device A looked it up). Device B has its
+        // own connection to 5.5.5.5 and never queried it, yet gets the name from the shared cache map.
+        var cacheMap = DnsCacheMap.Build(
+        [
+            new DnsCacheRecord { Host = "streaming.example.com.", RrType = "A", Value = "5.5.5.5", TtlSeconds = 120 },
+        ]);
         var networkWideQueries = new[] { Query("streaming.example.com", 30) };
-        var domainsMostRecentFirst = NetworkDnsNaming.ExtractDomainsMostRecentFirst(networkWideQueries);
-        var dnsNamesByIp = new Dictionary<string, List<string>>
-        {
-            ["5.5.5.5"] = domainsMostRecentFirst.Where(d => d == "streaming.example.com").ToList(),
-        };
+        var dnsNamesByIp = DnsNaming.ChooseNames(
+            cacheMap, ["5.5.5.5"], NetworkDnsNaming.ExtractDomainsMostRecentFirst(networkWideQueries));
 
-        // Device B (10.0.1.20) has its own raw connection to the same IP, with no lookup of its own.
         var states = new[] { State("10.0.1.20", "5.5.5.5") };
         var geo = new Dictionary<string, GeoInfo> { ["5.5.5.5"] = new() { Country = "US", City = "Ashburn", Lat = 1, Lon = 1 } };
 
