@@ -118,7 +118,7 @@ public sealed class UnboundLogClient : IUnboundLogClient
             var reachedCutoff = false;
             foreach (var row in rows)
             {
-                if (row.Domain is null) continue;
+                if (row.Domain is null || RouterSelfQueries.IsRouterSelf(row.Client)) continue;
 
                 var time = DateTimeOffset.FromUnixTimeSeconds(row.Time);
                 if (time < cutoff)

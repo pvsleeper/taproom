@@ -13,6 +13,8 @@ namespace Taproom.Api.Clients;
 /// </summary>
 public sealed class ConnectionsService
 {
+    // How long a page load waits on uncached reverse lookups; slower ones finish in the background.
+    private static readonly TimeSpan PtrBudget = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(3);
     // Wide enough that a long-lived connection still finds the DNS lookup that originally opened it.
     private static readonly TimeSpan DomainLookbackWindow = TimeSpan.FromHours(24);
@@ -165,8 +167,7 @@ public sealed class ConnectionsService
 
         // Independent per-IP lookups (each usually a cache hit after the first pass), run concurrently.
         var needsPtr = publicRemoteIps.Where(remoteIp => !dnsNamesByIp.ContainsKey(remoteIp)).ToList();
-        var ptrResults = await Task.WhenAll(needsPtr.Select(async ip => (ip, ptr: await _ptrResolver.ReversePtrAsync(ip, cancellationToken))));
-        var ptrNamesByIp = ptrResults.ToDictionary(r => r.ip, r => r.ptr);
+        var ptrNamesByIp = await _ptrResolver.ResolveManyAsync(needsPtr, PtrBudget, cancellationToken);
 
         var geoByIp = new Dictionary<string, GeoInfo>();
         foreach (var remoteIp in publicRemoteIps)

@@ -22,7 +22,6 @@ services:
       - Taproom__Opnsense__ApiKey=${OPNSENSE_API_KEY}
       - Taproom__Opnsense__ApiSecret=${OPNSENSE_API_SECRET}
       - Taproom__Opnsense__AllowInvalidCertificate=${OPNSENSE_ALLOW_INVALID_CERTIFICATE:-false}
-      - Taproom__Opnsense__DnsServer=${OPNSENSE_DNS_SERVER}
       - Taproom__Opnsense__LanInterface=${OPNSENSE_LAN_INTERFACE:-lan}
       - Taproom__Opnsense__WanInterface=${OPNSENSE_WAN_INTERFACE:-wan}
       - Taproom__Home__Latitude=${HOME_LATITUDE}

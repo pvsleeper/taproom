@@ -82,6 +82,7 @@ ConfigureOpnsenseClient(builder.Services.AddHttpClient<IUnboundLogClient, Unboun
 ConfigureOpnsenseClient(builder.Services.AddHttpClient<ITopTalkersClient, TopTalkersClient>());
 ConfigureOpnsenseClient(builder.Services.AddHttpClient<IInterfaceCounterClient, InterfaceCounterClient>());
 ConfigureOpnsenseClient(builder.Services.AddHttpClient<IUnboundCacheClient, UnboundCacheClient>());
+ConfigureOpnsenseClient(builder.Services.AddHttpClient<IReverseLookupClient, ReverseLookupClient>());
 
 var app = builder.Build();
 

@@ -47,8 +47,6 @@ public sealed class OpnsenseOptions
     public string ApiSecret { get; set; } = "";
     public bool AllowInvalidCertificate { get; set; }
     public DhcpProvider DhcpProvider { get; set; } = DhcpProvider.Dnsmasq;
-    /// <summary>Resolver used to re-resolve domains for connection enrichment — normally the router itself.</summary>
-    public string DnsServer { get; set; } = "";
     /// <summary>Logical interface name for the top-talkers bandwidth sample, e.g. "lan".</summary>
     public string LanInterface { get; set; } = "lan";
     /// <summary>Logical interface name for the WAN bandwidth counters, e.g. "wan".</summary>
